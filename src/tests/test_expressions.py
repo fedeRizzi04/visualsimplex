@@ -13,4 +13,14 @@ def test_empty_expression():
 def test_ok_expression():
     s = frozenset([Variable(Fraction(1,1), VarName('x')), Variable(Fraction(2, 3), VarName('y'))])
     e = Expression(s)
-    assert e.vars == s
+    assert e._vars == s
+
+def test_expression_returns_iterator():
+    variables = frozenset({
+        Variable(Fraction(1, 1), VarName("x")),
+    })
+
+    expression = Expression(variables)
+    iterator = iter(expression)
+
+    assert list(iterator) == list(variables)

@@ -11,14 +11,17 @@ class VarName:
 
 @dataclass(frozen=True)
 class Variable:
-    coeff : Fraction
-    var : VarName
+    _coeff : Fraction
+    _var : VarName
 
 
 @dataclass(frozen=True)
 class Expression:
-    vars : frozenset[Variable] = field(default_factory=frozenset)
+    _vars : frozenset[Variable] = field(default_factory=frozenset)
 
     def __post_init__(self):
-        if len(self.vars) == 0:
+        if len(self._vars) == 0:
             raise ValueError('empty expression not allowed')
+
+    def __iter__(self):
+        return iter(self._vars)
