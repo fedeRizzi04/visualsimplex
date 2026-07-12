@@ -1,2 +1,4 @@
-def hello() -> str:
-    return "Hello from simplexlab!"
+from simplexlab.expressions import Expression
+
+
+__all__ = ["Expression"]
