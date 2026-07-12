@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from fractions import Fraction
 
 @dataclass(frozen=True)
@@ -12,4 +12,13 @@ class VarName:
 @dataclass(frozen=True)
 class Variable:
     coeff : Fraction
-    var : VarName 
+    var : VarName
+
+
+@dataclass(frozen=True)
+class Expression:
+    vars : frozenset[Variable] = field(default_factory=frozenset)
+
+    def __post_init__(self):
+        if len(self.vars) == 0:
+            raise ValueError('empty expression not allowed')
