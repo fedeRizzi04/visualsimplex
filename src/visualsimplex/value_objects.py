@@ -5,6 +5,7 @@ from enum import Enum
 from fractions import Fraction
 from itertools import chain
 
+# variables, terms and expressions
 
 class VarKind(Enum):
     ORIGINAL = "original"
@@ -16,7 +17,7 @@ class VarKind(Enum):
 class Variable:
     s: str
 
-    def __post_init__(self) -> None:
+    def __post_init__(self):
         if self.s.strip() == "":
             raise ValueError("variable cannot be empty")
         object.__setattr__(self, "s", self.s.strip())
@@ -44,25 +45,22 @@ class Expression:
         if not terms:
             raise ValueError("empty expression not allowed")
         if len({term.var for term in terms}) != len(terms):
-            raise ValueError(
-                "an expression must have at most one term for a given Variable name"
-            )
+            raise ValueError("an expression must have at most one term for a given Variable name")
         self._terms = terms
 
     def __iter__(self):
         return iter(self._terms)
 
 
+# objective function
+
 class OptimizationSense(Enum):
     MAXIMIZE = "max"
     MINIMIZE = "min"
 
     def swap(self) -> OptimizationSense:
-        return (
-            OptimizationSense.MINIMIZE
-            if self == OptimizationSense.MAXIMIZE
-            else OptimizationSense.MAXIMIZE
-        )
+        return OptimizationSense.MINIMIZE if self is OptimizationSense.MAXIMIZE else OptimizationSense.MAXIMIZE
+
 
 
 @dataclass(frozen=True)
@@ -74,6 +72,8 @@ class Objective:
         terms = (term * -1 for term in self.expr)
         return Objective(Expression(terms), self.opt_sense.swap())
 
+
+# constraints
 
 class ConstraintSense(Enum):
     LE = "<="
