@@ -1,4 +1,22 @@
-from visualsimplex.expressions import Expression
+from visualsimplex.value_objects import (
+    Constraint,
+    ConstraintSense,
+    Expression,
+    Objective,
+    OptimizationSense,
+    Term,
+    VarKind,
+    Variable,
+)
 
 
-__all__ = ["Expression"]
+__all__ = [
+    "Constraint",
+    "ConstraintSense",
+    "Expression",
+    "Objective",
+    "OptimizationSense",
+    "Term",
+    "VarKind",
+    "Variable",
+]
