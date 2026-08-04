@@ -1,3 +1,3 @@
-# Simplexlab
+# VisualSimplex
 
-A library to help visualizing pivot steps of the simplex algorithm for LP problems. 
+A library to help visualizing pivot steps of the simplex algorithm for LP problems.
