@@ -15,7 +15,7 @@ from visualsimplex import (
 
 
 def term(name: str, coeff: Fraction = Fraction(1), kind: VarKind = VarKind.ORIGINAL):
-    return Term(coeff, Variable(name), kind)
+    return Term(coeff, Variable(name, kind))
 
 
 def test_variable_rejects_empty_and_whitespace_only_names():
@@ -46,7 +46,7 @@ def test_term_multiplication_preserves_variable_and_kind():
 
     result = original * Fraction(-3, 2)
 
-    assert result == Term(Fraction(-1), original.var, VarKind.SLACK)
+    assert result == Term(Fraction(-1), original.var)
 
 
 @pytest.mark.parametrize(

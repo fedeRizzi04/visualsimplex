@@ -15,25 +15,25 @@ class VarKind(Enum):
 
 @dataclass(frozen=True)
 class Variable:
-    s: str
+    symbol: str
+    kind: VarKind = VarKind.ORIGINAL
 
     def __post_init__(self):
-        if self.s.strip() == "":
+        if self.symbol.strip() == "":
             raise ValueError("variable cannot be empty")
-        object.__setattr__(self, "s", self.s.strip())
+        object.__setattr__(self, "symbol", self.symbol.strip())
 
 
 @dataclass(frozen=True)
 class Term:
     coeff: Fraction
     var: Variable
-    kind: VarKind
 
     def same_var(self, other: Term) -> bool:
-        return self.var == other.var
+        return self.var.symbol == other.var.symbol
 
     def __mul__(self, scalar: Fraction) -> Term:
-        return Term(self.coeff * scalar, self.var, self.kind)
+        return Term(self.coeff * scalar, self.var)
 
     def __rmul__(self, scalar : Fraction): # called when we have x * term and x does not support __mul__ with a term
         return self * scalar # calling __mul__
@@ -44,7 +44,7 @@ class Expression:
         terms = tuple(terms)
         if not terms:
             raise ValueError("empty expression not allowed")
-        if len({term.var for term in terms}) != len(terms):
+        if len({term.var.symbol for term in terms}) != len(terms):
             raise ValueError("an expression must have at most one term for a given Variable name")
         self._terms = terms
 
@@ -97,7 +97,7 @@ class Constraint:
         
         var_kind = VarKind.SLACK if self.sense is ConstraintSense.LE else VarKind.SURPLUS
         coeff = Fraction(1) if var_kind is VarKind.SLACK else Fraction(-1)
-        term = Term(coeff, var, var_kind)
+        term = Term(coeff, Variable(var.symbol, var_kind))
 
         terms = chain(iter(self.expr), (term,))
         return Constraint(Expression(terms), self.rhs, ConstraintSense.EQ)
