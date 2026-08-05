@@ -81,29 +81,32 @@ class Term:
 
 class Expression:
     def __init__(self, terms: Iterable[Term]):
-        terms = sorted(tuple(terms))
-        if not terms:
-            raise ValueError("empty expression not allowed")
+        terms = tuple(terms)
         if len({term.var.symbol for term in terms}) != len(terms):
             raise ValueError("an expression must have at most one term for a given Variable name")
-        self._terms = terms
+        self._terms : dict[Variable, Term] = {t.var : t for t in terms} 
 
     def __iter__(self) -> Iterator[Term]:
-        return iter(self._terms)
+        return iter(sorted(self._terms.values()))
 
     def __mul__(self, scalar):
-        terms = (t * scalar for t in self._terms)
+        terms = (t * scalar for t in self._terms.values())
         return Expression(terms)
 
     def __rmul__(self, scalar):
         return self * scalar
 
     def to_non_negative(self) -> Expression:
-        terms = chain.from_iterable(term.to_non_negative() for term in self._terms) # tuple of tuples chained to have one iterable
+        terms = chain.from_iterable(term.to_non_negative() for term in self._terms.values()) # tuple of tuples chained to have one iterable
         return Expression(terms)
 
+    def coefficient_of(self, var : Variable) -> Fraction:
+        return self._terms.get(var, Fraction(0))
+    
     def __str__(self):
-        first, *rest = self._terms
+        if len(self._terms) == 0:
+            return '0'
+        first, *rest = tuple(iter(self)) # to obtain them ordered
         return str(first) + "".join(
             f" {'-' if term.coeff < 0 else '+'} {term.unsigned_str()}"
             for term in rest

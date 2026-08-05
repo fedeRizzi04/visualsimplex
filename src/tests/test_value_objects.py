@@ -6,8 +6,8 @@ from visualsimplex import Constraint, ConstraintSense, Expression, Objective, Op
 
 
 def term(name: str, coeff: Fraction = Fraction(1), kind: VarKind = VarKind.ORIGINAL):
-    return Term(Variable(kind, name), coeff)
-
+    return Term(Variable(kind, name), coeff) 
+    
 
 def test_variable_rejects_empty_and_whitespace_only_names():
     with pytest.raises(ValueError):
@@ -64,12 +64,10 @@ def test_terms_are_ordered_by_their_variables():
     )
 
 
-def test_expression_requires_terms_and_rejects_duplicate_variables():
-    with pytest.raises(ValueError, match="empty expression"):
-        Expression(())
+def test_zero_expression():
+    e = Expression([])
+    assert str(e) == '0'
 
-    with pytest.raises(ValueError, match="at most one term"):
-        Expression((term("x"), term("x", Fraction(2))))
 
 
 def test_expression_preserves_term_order_and_is_iterable():

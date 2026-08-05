@@ -47,6 +47,12 @@ class LPProblem:
         constraints = (Constraint(constraint.expr.to_non_negative(), constraint.rhs, constraint.sense) for constraint in self._constraints)
         return LPProblem(objective, constraints)
 
+    def get_objective(self) -> Objective:
+        return self._objective
+
+    def __iter__(self):
+        return iter(self._constraints) # constraint is immutable
+
     def __str__(self) -> str:
         lines = [str(self._objective), "s.t."]
         lines.extend(map(str, self._constraints))
