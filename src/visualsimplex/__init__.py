@@ -6,6 +6,7 @@ from visualsimplex.value_objects import (
     OptimizationSense,
     Term,
     VarKind,
+    VarDomain,
     Variable,
 )
 
@@ -18,5 +19,6 @@ __all__ = [
     "OptimizationSense",
     "Term",
     "VarKind",
+    "VarDomain",
     "Variable",
 ]

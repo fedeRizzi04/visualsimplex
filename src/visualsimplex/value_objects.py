@@ -1,22 +1,31 @@
 from __future__ import annotations
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
-from enum import Enum
+from enum import Enum, IntEnum, auto
 from fractions import Fraction
 from itertools import chain
 
 # variables, terms and expressions
 
-class VarKind(Enum):
-    ORIGINAL = "original"
-    SLACK = "slack"
-    SURPLUS = "surplus"
+class ComparableEnum(Enum):
+    def __lt__(self, other):
+        return self.value < other.value
+
+class VarKind(ComparableEnum):
+    ORIGINAL = (0, 'original')
+    SLACK = (1, 'slack')
+    SURPLUS = (2, 'surplus')
+
+class VarDomain(ComparableEnum):
+    NON_NEGATIVE = (0, 'non negative')
+    FREE = (1, 'free')
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, order=True)
 class Variable:
+    kind: VarKind # first the kind because in the tableau and in expressions I want slack and surplus variables to be on the tail
     symbol: str
-    kind: VarKind = VarKind.ORIGINAL
+    domain: VarDomain = VarDomain.NON_NEGATIVE
 
     def __post_init__(self):
         if self.symbol.strip() == "":
@@ -24,16 +33,13 @@ class Variable:
         object.__setattr__(self, "symbol", self.symbol.strip())
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, order=True)
 class Term:
-    coeff: Fraction
     var: Variable
-
-    def same_var(self, other: Term) -> bool:
-        return self.var.symbol == other.var.symbol
+    coeff: Fraction
 
     def __mul__(self, scalar: Fraction) -> Term:
-        return Term(self.coeff * scalar, self.var)
+        return Term(self.var, self.coeff * scalar)
 
     def __rmul__(self, scalar : Fraction): # called when we have x * term and x does not support __mul__ with a term
         return self * scalar # calling __mul__
@@ -41,14 +47,14 @@ class Term:
 
 class Expression:
     def __init__(self, terms: Iterable[Term]):
-        terms = tuple(terms)
+        terms = sorted(tuple(terms))
         if not terms:
             raise ValueError("empty expression not allowed")
         if len({term.var.symbol for term in terms}) != len(terms):
             raise ValueError("an expression must have at most one term for a given Variable name")
         self._terms = terms
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Term]:
         return iter(self._terms)
 
 
@@ -97,7 +103,7 @@ class Constraint:
         
         var_kind = VarKind.SLACK if self.sense is ConstraintSense.LE else VarKind.SURPLUS
         coeff = Fraction(1) if var_kind is VarKind.SLACK else Fraction(-1)
-        term = Term(coeff, Variable(var.symbol, var_kind))
+        term = Term(Variable(var_kind, var.symbol), coeff)
 
         terms = chain(iter(self.expr), (term,))
         return Constraint(Expression(terms), self.rhs, ConstraintSense.EQ)

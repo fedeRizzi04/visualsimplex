@@ -15,14 +15,50 @@ from visualsimplex import (
 
 
 def term(name: str, coeff: Fraction = Fraction(1), kind: VarKind = VarKind.ORIGINAL):
-    return Term(coeff, Variable(name, kind))
+    return Term(Variable(kind, name), coeff)
 
 
 def test_variable_rejects_empty_and_whitespace_only_names():
     with pytest.raises(ValueError):
-        Variable("")
+        Variable(VarKind.ORIGINAL, "")
     with pytest.raises(ValueError):
-        Variable(" \t\n")
+        Variable(VarKind.ORIGINAL, " \t\n")
+
+
+def test_variables_are_ordered_by_kind_then_symbol():
+    variables = (
+        Variable(VarKind.ORIGINAL, "x2"),
+        Variable(VarKind.SLACK, "s1"),
+        Variable(VarKind.ORIGINAL, "z"),
+        Variable(VarKind.ORIGINAL, "x1"),
+    )
+
+    assert sorted(variables) == [
+        Variable(VarKind.ORIGINAL, "x1"),
+        Variable(VarKind.ORIGINAL, "x2"),
+        Variable(VarKind.ORIGINAL, "z"),
+        Variable(VarKind.SLACK, "s1"),
+    ]
+
+
+def test_terms_are_ordered_by_their_variables():
+    expression = Expression(
+        (
+            term("x2", Fraction(2)),
+            term("s1", Fraction(3), VarKind.SLACK),
+            term("z", Fraction(4)),
+            term("x1", Fraction(1)),
+        )
+    )
+
+    ordered = Expression(sorted(expression))
+
+    assert tuple(ordered) == (
+        term("x1", Fraction(1)),
+        term("x2", Fraction(2)),
+        term("z", Fraction(4)),
+        term("s1", Fraction(3), VarKind.SLACK),
+    )
 
 
 def test_expression_requires_terms_and_rejects_duplicate_variables():
@@ -46,7 +82,7 @@ def test_term_multiplication_preserves_variable_and_kind():
 
     result = original * Fraction(-3, 2)
 
-    assert result == Term(Fraction(-1), original.var)
+    assert result == Term(original.var, Fraction(-1))
 
 
 @pytest.mark.parametrize(
@@ -82,7 +118,7 @@ def test_inequality_is_converted_to_equality_with_expected_variable_kind_and_coe
 ):
     constraint = Constraint(Expression((term("x"),)), Fraction(5), sense)
 
-    result = constraint.to_equality_form(Variable("s"))
+    result = constraint.to_equality_form(Variable(VarKind.ORIGINAL, "s"))
 
     assert result.sense is ConstraintSense.EQ
     assert result.rhs == Fraction(5)
@@ -97,13 +133,13 @@ def test_equality_cannot_be_converted_again_and_duplicate_added_variable_is_reje
         Expression((term("x"),)), Fraction(5), ConstraintSense.EQ
     )
     with pytest.raises(RuntimeError, match="already in equality"):
-        equality.to_equality_form(Variable("s"))
+        equality.to_equality_form(Variable(VarKind.ORIGINAL, "s"))
 
     inequality = Constraint(
         Expression((term("x"),)), Fraction(5), ConstraintSense.LE
     )
     with pytest.raises(ValueError, match="at most one term"):
-        inequality.to_equality_form(Variable("x"))
+        inequality.to_equality_form(Variable(VarKind.ORIGINAL, "x"))
 
 
 def test_scalar_multiplication_is_symmetric():
