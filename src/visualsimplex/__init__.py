@@ -1,14 +1,4 @@
-from visualsimplex.value_objects import (
-    Constraint,
-    ConstraintSense,
-    Expression,
-    Objective,
-    OptimizationSense,
-    Term,
-    VarKind,
-    VarDomain,
-    Variable,
-)
+from visualsimplex.value_objects import Constraint, ConstraintSense, Expression, Objective, OptimizationSense, Term, VarKind, VarDomain, Variable
 from visualsimplex.lp_problem import LPProblem
 
 
