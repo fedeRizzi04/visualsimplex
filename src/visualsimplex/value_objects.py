@@ -9,6 +9,8 @@ from itertools import chain
 
 class ComparableEnum(Enum):
     def __lt__(self, other):
+        if not isinstance(other, type(self)):
+            raise TypeError(f'{type(self)} instances cannot be compared (<) with {type(other)} instances')
         return self.value < other.value
 
 class VarKind(ComparableEnum):
@@ -19,6 +21,9 @@ class VarKind(ComparableEnum):
 class VarDomain(ComparableEnum):
     NON_NEGATIVE = (0, 'non negative')
     FREE = (1, 'free')
+
+    def __str__(self):
+        return ">= 0" if self is VarDomain.NON_NEGATIVE else "free"
 
 
 @dataclass(frozen=True, order=True)
@@ -32,6 +37,9 @@ class Variable:
             raise ValueError("variable cannot be empty")
         object.__setattr__(self, "symbol", self.symbol.strip())
 
+    def __str__(self):
+        return self.symbol
+
 
 @dataclass(frozen=True, order=True)
 class Term:
@@ -43,6 +51,15 @@ class Term:
 
     def __rmul__(self, scalar : Fraction): # called when we have x * term and x does not support __mul__ with a term
         return self * scalar # calling __mul__
+
+    def __str__(self):
+        coefficient = abs(self.coeff)
+        factor = "" if coefficient == 1 else str(coefficient)
+        sign = "-" if self.coeff < 0 else ""
+        return f"{sign}{factor}{self.var}"
+
+    def unsigned_str(self) -> str:
+        return str(Term(self.var, abs(self.coeff)))
 
 
 class Expression:
@@ -56,6 +73,13 @@ class Expression:
 
     def __iter__(self) -> Iterator[Term]:
         return iter(self._terms)
+
+    def __str__(self):
+        first, *rest = self._terms
+        return str(first) + "".join(
+            f" {'-' if term.coeff < 0 else '+'} {term.unsigned_str()}"
+            for term in rest
+        )
 
 
 # objective function
@@ -77,6 +101,9 @@ class Objective:
     def swap_sense(self) -> Objective:
         terms = (term * -1 for term in self.expr)
         return Objective(Expression(terms), self.opt_sense.swap())
+
+    def __str__(self):
+        return f"{self.opt_sense.name.lower()} z = {self.expr}"
 
 
 # constraints
@@ -107,3 +134,6 @@ class Constraint:
 
         terms = chain(iter(self.expr), (term,))
         return Constraint(Expression(terms), self.rhs, ConstraintSense.EQ)
+
+    def __str__(self):
+        return f"{self.expr} {self.sense.value} {self.rhs}"

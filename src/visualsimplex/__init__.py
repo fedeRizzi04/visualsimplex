@@ -9,6 +9,7 @@ from visualsimplex.value_objects import (
     VarDomain,
     Variable,
 )
+from visualsimplex.lp_problem import LPProblem
 
 
 __all__ = [
@@ -21,4 +22,5 @@ __all__ = [
     "VarKind",
     "VarDomain",
     "Variable",
+    "LPProblem",
 ]
