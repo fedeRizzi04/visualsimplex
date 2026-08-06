@@ -1,17 +1,46 @@
+from __future__ import annotations
 from collections.abc import Iterable
-from visualsimplex.value_objects import Constraint, ConstraintSense, Objective, OptimizationSense, VarDomain, Variable
+from dataclasses import dataclass, field
+from visualsimplex.value_objects import Constraint, ConstraintSense, Objective, OptimizationSense, VarDomain, Variable, VarKind
 
-
-def _variables(objective : Objective, constraints : Iterable[Constraint]) -> tuple[Variable, ...]:
+def problem_variables(objective : Objective, constraints : Iterable[Constraint]) -> Iterable[Variable]:
     '''returns all different variables in a problem (Varaible instances)'''
-    return tuple(term.var for expression in (objective.expr, *(constraint.expr for constraint in constraints))
-                          for term in expression)
+    return (term.var for expression in (objective.expr, *(constraint.expr for constraint in constraints)) for term in expression)
+
+
+@dataclass(frozen=True)
+class CanonicalFormLPProblem:
+    problem : LPProblem
+    basic_vars : frozenset[Variable] = field(default_factory=frozenset)
+    non_basic_vars : frozenset[Variable] = field(default_factory=frozenset)
+
+    def __post_init__(self) -> None:
+        objective = self.problem.get_objective()
+        constraints = tuple(self.problem)
+        n_constraints = len(constraints)
+
+        if objective.opt_sense is not OptimizationSense.MINIMIZE:
+            raise ValueError("a canonical-form problem must minimize its objective")
+
+        if len(self.basic_vars) != n_constraints:
+            raise ValueError("the number of basic variables must equal the number of constraints")
+        if sum(var.kind is VarKind.SLACK for var in self.basic_vars | self.non_basic_vars) != n_constraints:
+            raise ValueError("a canonical-form problem must have one slack variable per constraint")
+        
+        rows = tuple({term.var: term.coeff for term in constraint.expr} for constraint in constraints)
+        basic_columns = {tuple(row.get(var, 0) for row in rows) for var in self.basic_vars}
+        identity_columns = {tuple(int(row == column) for row in range(n_constraints)) for column in range(n_constraints)}
+        if basic_columns != identity_columns:
+            raise ValueError("basic-variable columns must form the identity matrix")
+        if not self.basic_vars.isdisjoint(term.var for term in objective.expr):
+            raise ValueError("basic variables must not appear in the objective expression")
+
 
 class LPProblem:
 
     def __init__(self, objective : Objective, constraints : Iterable[Constraint]):
         constraints = tuple(constraints)
-        variables = _variables(objective, constraints)
+        variables = tuple(problem_variables(objective, constraints))
         for i, variable in enumerate(variables):
             if any(not variable.is_compatible_with(other) for other in variables[i + 1:]):
                 raise ValueError(f"incompatible variables with symbol {variable.symbol!r}")
@@ -28,7 +57,7 @@ class LPProblem:
     def is_in_inequality_form(self) -> bool:
         return all(c.is_in_inequality_form() for c in self._constraints)
 
-    def from_inequality_form_to_standard_form(self):
+    def from_inequality_form_to_standard_form(self) -> LPProblem:
         """Convert an inequality-form problem to the current standard-form convention."""
         if not self.is_in_inequality_form():
             raise RuntimeError("the LP problem is not in inequality form")
@@ -46,6 +75,16 @@ class LPProblem:
         objective = Objective(self._objective.expr.to_non_negative(), self._objective.opt_sense)
         constraints = (Constraint(constraint.expr.to_non_negative(), constraint.rhs, constraint.sense) for constraint in self._constraints)
         return LPProblem(objective, constraints)
+
+    def from_inequality_form_to_canonical_form(self) -> CanonicalFormLPProblem:
+        standard_form_problem = self.from_inequality_form_to_standard_form()
+        sf_variables = frozenset(standard_form_problem.get_variables())
+        basic_variables = frozenset(variable for variable in sf_variables if variable.kind is VarKind.SLACK)
+        non_basic_variables = sf_variables - basic_variables
+        return CanonicalFormLPProblem(standard_form_problem, basic_variables, non_basic_variables)
+
+    def get_variables(self) -> Iterable[Variable]:
+        return problem_variables(self._objective, self._constraints)
 
     def get_objective(self) -> Objective:
         return self._objective
