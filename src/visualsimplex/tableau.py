@@ -3,23 +3,13 @@ from visualsimplex.lp_problem import CanonicalFormLPProblem
 from typing import Iterable
 from fractions import Fraction
 from dataclasses import dataclass
-from collections.abc import Set
+from visualsimplex.utils import get_basic_var
 
 @dataclass(frozen=True)
 class TableauRow:
     coefficients : tuple[Fraction]
     rhs : Fraction
     basic_var : Variable
-
-def get_basic_var(expr : Expression, basic_vars : Set[Variable]) -> Variable: 
-    basic_vars_in_expr = {t.var for t in expr if t.var in basic_vars and t.coeff == Fraction(1)}
-    if len(basic_vars_in_expr) == 0:
-        raise ValueError(f'The expression {expr}, given this set of basic vars: {basic_vars}, does not have a basic var with unitary coefficient')
-    if len(basic_vars_in_expr) > 1:
-        raise ValueError(f'an expression must have only one basic variable with unitary coefficient. \
-                           The expression {expr}, given this set of basic vars: {basic_vars}, does not satisfy the previous constraint')
-    return next(iter(basic_vars_in_expr))
-
 
 class Tableau:
 
@@ -82,8 +72,3 @@ class Tableau:
         except ValueError as e: 
             raise ValueError(f'{var} is not part of {self}') from e
         return index
-        
-        
-
-
-

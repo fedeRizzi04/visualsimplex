@@ -2,11 +2,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from visualsimplex.value_objects import Constraint, ConstraintSense, Objective, OptimizationSense, VarDomain, Variable, VarKind
-
-def problem_variables(objective : Objective, constraints : Iterable[Constraint]) -> Iterable[Variable]:
-    '''returns all different variables in a problem (Varaible instances)'''
-    return (term.var for expression in (objective.expr, *(constraint.expr for constraint in constraints)) for term in expression)
-
+from visualsimplex.utils import problem_variables
 
 @dataclass(frozen=True)
 class CanonicalFormLPProblem:
