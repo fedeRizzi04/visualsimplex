@@ -29,8 +29,8 @@ class Tableau:
 
     def __init__(self, lp_problem : CanonicalFormLPProblem, objective_tableau_coeff : Fraction = Fraction(0)): 
         self._basic_vars : frozenset[Variable] = lp_problem.basic_vars 
-        self._non_basic_vars : frozenset[Variable] = lp_problem.non_basic_vars
         self._objective_tableau_coeff : Fraction = objective_tableau_coeff 
+        self._variables : tuple[Variable] = tuple(sorted(lp_problem.basic_vars | lp_problem.non_basic_vars))
 
         obj_expr = lp_problem.problem.objective.expr
         self._reduced_cost_coefficients : tuple[Fraction] = tuple(self._build_reduced_costs_coefficients(obj_expr))
@@ -53,15 +53,15 @@ class Tableau:
 
     @property
     def variables(self) -> Iterable[Variable]:
-        return iter(sorted(tuple(self._basic_vars | self._non_basic_vars)))
+        return iter(self._variables)
     
     @property
     def basic_variables(self) -> Iterable[Variable]:
-        return iter(sorted(tuple(self._basic_vars)))
+        return iter(sorted(self._basic_vars))
 
     @property
     def non_basic_variables(self) -> Iterable[Variable]:
-        return iter(sorted(tuple(self._non_basic_vars))) 
+        return iter(sorted(frozenset(self._variables) - self._basic_vars)) 
 
     @property
     def objective_value(self) -> Fraction:

@@ -59,8 +59,8 @@ def test_tableau_builds_coefficients_from_mocked_problem_dependencies(mocker):
 def test_get_var_index_returns_the_column_and_rejects_unknown_variables():
     x, s = var("x"), var("s", VarKind.SLACK)
     tableau = Tableau.__new__(Tableau)
-    tableau._basic_vars = tableau._basic_variables = frozenset((s,))
-    tableau._non_basic_vars = tableau._non_basic_variables = frozenset((x,))
+    tableau._basic_vars = frozenset((s,))
+    tableau._variables = (x, s)
     tableau._objective_tableau_coeff, tableau._reduced_cost_coefficients = Fraction(0), (Fraction(0), Fraction(0))
     tableau._rows = (TableauRow((Fraction(0), Fraction(1)), Fraction(0), s),)
 
