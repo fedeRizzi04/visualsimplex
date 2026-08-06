@@ -70,6 +70,30 @@ def test_get_var_index_returns_the_column_and_rejects_unknown_variables():
     assert tableau.get_var_index(s) == 1
 
 
+@pytest.mark.parametrize(
+    ("rhs_values", "reduced_costs", "expected_feasible", "expected_optimal"),
+    [
+        ((), (), True, True),
+        ((Fraction(0), Fraction(3, 2)), (Fraction(0), Fraction(2, 3)), True, True),
+        ((Fraction(0), Fraction(-1, 3)), (Fraction(0), Fraction(1)), False, False),
+        ((Fraction(0), Fraction(1)), (Fraction(0), Fraction(-1, 3)), True, False),
+    ],
+    ids=("empty", "zero-boundaries", "negative-rhs", "negative-reduced-cost"),
+)
+def test_basis_feasibility_and_optimality_edge_cases(
+    rhs_values, reduced_costs, expected_feasible, expected_optimal
+):
+    tableau = Tableau.__new__(Tableau)
+    tableau._rows = tuple(
+        TableauRow((), rhs, var(f"s{i}", VarKind.SLACK))
+        for i, rhs in enumerate(rhs_values)
+    )
+    tableau._reduced_cost_coefficients = reduced_costs
+
+    assert tableau.is_feasible_basis() is expected_feasible
+    assert tableau.is_optimal_basis() is expected_optimal
+
+
 def test_tableau_row_string_contains_rhs_and_coefficients():
     row = TableauRow((Fraction(-1, 2), Fraction(0), Fraction(3)), Fraction(5, 4), var("s", VarKind.SLACK))
 

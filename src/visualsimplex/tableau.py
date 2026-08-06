@@ -72,6 +72,12 @@ class Tableau:
             raise ValueError(f'{var} is not a basic var in the following tableau: \n{self}')
         return next(r.rhs for r in self._rows if r.basic_var == var)
 
+    def is_feasible_basis(self) -> bool:
+        return all(r.rhs >= 0 for r in self._rows)
+
+    def is_optimal_basis(self) -> bool:
+        return self.is_feasible_basis() and all(c >= Fraction(0) for c in self._reduced_cost_coefficients)
+
 
     def get_var_index(self, var : Variable):
         '''

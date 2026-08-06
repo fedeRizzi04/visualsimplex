@@ -21,6 +21,8 @@ class CanonicalFormLPProblem:
             raise ValueError("a canonical-form problem must minimize its objective")
         if variables != problem_vars or not self.basic_vars.isdisjoint(self.non_basic_vars):
             raise ValueError("basic and non-basic variables must partition the problem variables")
+        if any(variable.domain is not VarDomain.NON_NEGATIVE for variable in variables):
+            raise ValueError("all variables in a canonical-form problem must be non-negative")
         if len(self.basic_vars) != n_constraints:
             raise ValueError("the number of basic variables must equal the number of constraints")
         if sum(var.kind is VarKind.SLACK for var in variables) != n_constraints:

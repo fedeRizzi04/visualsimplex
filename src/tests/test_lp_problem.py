@@ -186,6 +186,24 @@ def test_canonical_form_rejects_declared_variables_not_present_in_the_problem():
         CanonicalFormLPProblem(canonical.problem, canonical.basic_vars, canonical.non_basic_vars | frozenset((undeclared,)))
 
 
+def test_canonical_form_requires_all_variables_to_be_non_negative():
+    free_x = variable("x", domain=VarDomain.FREE)
+    slack_var = Variable(VarKind.SLACK, "s")
+    problem = LPProblem(
+        Objective(Expression((Term(free_x, Fraction(1)),)), OptimizationSense.MINIMIZE),
+        (
+            Constraint(
+                Expression((Term(free_x, Fraction(1)), Term(slack_var, Fraction(1)))),
+                Fraction(1),
+                ConstraintSense.EQ,
+            ),
+        ),
+    )
+
+    with pytest.raises(ValueError, match="must be non-negative"):
+        CanonicalFormLPProblem(problem, frozenset((slack_var,)), frozenset((free_x,)))
+
+
 @pytest.mark.parametrize("invalid_partition", ("missing", "overlapping"))
 def test_basic_and_non_basic_variables_partition_all_problem_variables(invalid_partition):
     canonical = make_canonical_problem()
