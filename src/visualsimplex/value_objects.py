@@ -101,7 +101,7 @@ class Expression:
         return Expression(terms)
 
     def coefficient_of(self, var : Variable) -> Fraction:
-        return self._terms.get(var, Fraction(0))
+        return self._terms.get(var, Term(var, Fraction(0))).coeff 
     
     def __str__(self):
         if len(self._terms) == 0:

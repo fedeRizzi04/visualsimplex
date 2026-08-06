@@ -91,6 +91,14 @@ def test_expression_scalar_multiplication_scales_all_terms():
     )
 
 
+def test_expression_coefficient_lookup_returns_a_fraction_and_zero_when_absent():
+    x = Variable(VarKind.ORIGINAL, "x")
+    expression = Expression((Term(x, Fraction(3, 2)),))
+
+    assert expression.coefficient_of(x) == Fraction(3, 2)
+    assert expression.coefficient_of(Variable(VarKind.ORIGINAL, "y")) == Fraction(0)
+
+
 def test_free_term_is_replaced_by_positive_and_negative_non_negative_terms():
     free = Term(Variable(VarKind.ORIGINAL, "x", VarDomain.FREE), Fraction(3))
 

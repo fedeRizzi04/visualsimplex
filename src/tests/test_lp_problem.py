@@ -182,8 +182,19 @@ def test_canonical_form_rejects_declared_variables_not_present_in_the_problem():
     canonical = make_canonical_problem()
     undeclared = variable("undeclared")
 
-    with pytest.raises(ValueError, match="must belong to the problem"):
+    with pytest.raises(ValueError, match="must partition"):
         CanonicalFormLPProblem(canonical.problem, canonical.basic_vars, canonical.non_basic_vars | frozenset((undeclared,)))
+
+
+@pytest.mark.parametrize("invalid_partition", ("missing", "overlapping"))
+def test_basic_and_non_basic_variables_partition_all_problem_variables(invalid_partition):
+    canonical = make_canonical_problem()
+    variable_to_move = next(iter(canonical.non_basic_vars if invalid_partition == "missing" else canonical.basic_vars))
+    basic_vars = canonical.basic_vars
+    non_basic_vars = canonical.non_basic_vars - frozenset((variable_to_move,)) if invalid_partition == "missing" else canonical.non_basic_vars | frozenset((variable_to_move,))
+
+    with pytest.raises(ValueError, match="must partition"):
+        CanonicalFormLPProblem(canonical.problem, basic_vars, non_basic_vars)
 
 
 def test_canonical_form_requires_one_distinct_slack_and_one_basic_variable_per_constraint():
@@ -197,8 +208,10 @@ def test_canonical_form_requires_one_distinct_slack_and_one_basic_variable_per_c
     with pytest.raises(ValueError, match="one slack variable per constraint"):
         CanonicalFormLPProblem(LPProblem(Objective(Expression(()), OptimizationSense.MINIMIZE), constraints), frozenset((x1, x2)), frozenset((repeated_slack,)))
 
+    canonical = make_canonical_problem()
+    retained_basic_var = next(iter(canonical.basic_vars))
     with pytest.raises(ValueError, match="number of basic variables"):
-        make_canonical_problem(basic_vars=(Variable(VarKind.SLACK, "s1"),))
+        CanonicalFormLPProblem(canonical.problem, frozenset((retained_basic_var,)), canonical.non_basic_vars | (canonical.basic_vars - frozenset((retained_basic_var,))))
 
 
 @pytest.mark.parametrize(

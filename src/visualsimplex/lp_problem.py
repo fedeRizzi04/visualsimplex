@@ -15,15 +15,16 @@ class CanonicalFormLPProblem:
     non_basic_vars : frozenset[Variable] = field(default_factory=frozenset)
 
     def __post_init__(self) -> None:
-        objective = self.problem.get_objective()
+        objective = self.problem.objective
         constraints = tuple(self.problem)
         n_constraints = len(constraints)
         variables = self.basic_vars | self.non_basic_vars
+        problem_vars = frozenset(problem_variables(objective, constraints))
 
         if objective.opt_sense is not OptimizationSense.MINIMIZE:
             raise ValueError("a canonical-form problem must minimize its objective")
-        if not variables <= frozenset(problem_variables(objective, constraints)):
-            raise ValueError("basic and non-basic variables must belong to the problem")
+        if variables != problem_vars or not self.basic_vars.isdisjoint(self.non_basic_vars):
+            raise ValueError("basic and non-basic variables must partition the problem variables")
         if len(self.basic_vars) != n_constraints:
             raise ValueError("the number of basic variables must equal the number of constraints")
         if sum(var.kind is VarKind.SLACK for var in variables) != n_constraints:
@@ -88,11 +89,12 @@ class LPProblem:
     def get_variables(self) -> Iterable[Variable]:
         return problem_variables(self._objective, self._constraints)
 
-    def get_objective(self) -> Objective:
+    @property
+    def objective(self) -> Objective:
         return self._objective
 
-    def __iter__(self):
-        return iter(self._constraints) # constraint is immutable
+    def __iter__(self) -> Iterable[Constraint]:
+        return iter(self._constraints) # Constraint is immutable
 
     def __str__(self) -> str:
         lines = [str(self._objective), "s.t."]
