@@ -50,7 +50,7 @@ def test_tableau_builds_coefficients_from_mocked_problem_dependencies(mocker):
     assert tuple(tableau.non_basic_variables) == (x,)
     assert tableau._reduced_cost_coefficients == (Fraction(-2), Fraction(0))
     assert tableau._rows == (TableauRow((Fraction(3), Fraction(1)), Fraction(6), s),)
-    assert tableau.objective_value == Fraction(7, 2)
+    assert tableau.objective_value == Fraction(-7, 2)
     assert tableau.get_value_for_basic_var(s) == Fraction(6)
     with pytest.raises(ValueError, match="not a basic var"):
         tableau.get_value_for_basic_var(x)
@@ -61,7 +61,7 @@ def test_get_var_index_returns_the_column_and_rejects_unknown_variables():
     tableau = Tableau.__new__(Tableau)
     tableau._basic_vars = tableau._basic_variables = frozenset((s,))
     tableau._non_basic_vars = tableau._non_basic_variables = frozenset((x,))
-    tableau._obj_value, tableau._reduced_cost_coefficients = Fraction(0), (Fraction(0), Fraction(0))
+    tableau._objective_tableau_coeff, tableau._reduced_cost_coefficients = Fraction(0), (Fraction(0), Fraction(0))
     tableau._rows = (TableauRow((Fraction(0), Fraction(1)), Fraction(0), s),)
 
     with pytest.raises(ValueError, match="unknown"):
@@ -96,10 +96,18 @@ def test_lp_problem_to_tableau_integration_preserves_variable_and_constraint_ali
         TableauRow((Fraction(2), Fraction(1), Fraction(0), Fraction(1)), Fraction(5), var("sl1", VarKind.SLACK)),
     )
     assert str(tableau) == (
-        "     |    x1  x2  sl0  sl1\n"
-        "-7/2 | -10/3  -3    0    0\n"
-        " 400 |     1   1    1    0\n"
-        "   5 |     2   1    0    1\n"
-        "Basis: sl0 = 400, sl1 = 5"
+        "    |    x1  x2  sl0  sl1\n"
+        "7/2 | -10/3  -3    0    0\n"
+        "400 |     1   1    1    0\n"
+        "  5 |     2   1    0    1\n"
+        "Basis: sl0 = 400, sl1 = 5\n"
+        "Objective value: -7/2"
     )
-    assert str(Tableau(canonical_problem)).splitlines()[1].split("|")[0].strip() == "0"
+    assert str(Tableau(canonical_problem)) == (
+        "    |    x1  x2  sl0  sl1\n"
+        "  0 | -10/3  -3    0    0\n"
+        "400 |     1   1    1    0\n"
+        "  5 |     2   1    0    1\n"
+        "Basis: sl0 = 400, sl1 = 5\n"
+        "Objective value: 0"
+    )

@@ -27,10 +27,10 @@ class Tableau:
     # tuple (2, 0, 1, 0, -1) represent a reduced cost of 2 for x1, of 0 for x2, etc...
     # The same must be true even for constraint tuples
 
-    def __init__(self, lp_problem : CanonicalFormLPProblem, obj_value : Fraction = Fraction(0)): 
+    def __init__(self, lp_problem : CanonicalFormLPProblem, objective_tableau_coeff : Fraction = Fraction(0)): 
         self._basic_vars : frozenset[Variable] = lp_problem.basic_vars 
         self._non_basic_vars : frozenset[Variable] = lp_problem.non_basic_vars
-        self._obj_value : Fraction = obj_value 
+        self._objective_tableau_coeff : Fraction = objective_tableau_coeff 
 
         obj_expr = lp_problem.problem.objective.expr
         self._reduced_cost_coefficients : tuple[Fraction] = tuple(self._build_reduced_costs_coefficients(obj_expr))
@@ -65,7 +65,7 @@ class Tableau:
 
     @property
     def objective_value(self) -> Fraction:
-        return self._obj_value
+        return -self._objective_tableau_coeff
 
     def get_value_for_basic_var(self, var : Variable) -> Fraction:
         if var not in self._basic_vars:
@@ -88,10 +88,16 @@ class Tableau:
 
     def __str__(self) -> str:
         variables = tuple(self.variables)
-        objective_value = -self.objective_value
-        rhs_width = max(len(str(value)) for value in (objective_value, *(row.rhs for row in self._rows)))
+        objective_coefficient = self._objective_tableau_coeff
+        rhs_width = max(len(str(value)) for value in (objective_coefficient, *(row.rhs for row in self._rows)))
         widths = tuple(max(len(str(var)), *(len(str(row.coefficients[i])) for row in self._rows), len(str(self._reduced_cost_coefficients[i]))) for i, var in enumerate(variables))
         header = f"{'':>{rhs_width}} | " + "  ".join(f"{var!s:>{width}}" for var, width in zip(variables, widths))
-        objective = f"{objective_value!s:>{rhs_width}} | " + "  ".join(f"{coefficient!s:>{width}}" for coefficient, width in zip(self._reduced_cost_coefficients, widths))
+        objective = f"{objective_coefficient!s:>{rhs_width}} | " + "  ".join(f"{coefficient!s:>{width}}" for coefficient, width in zip(self._reduced_cost_coefficients, widths))
         basis = ", ".join(f"{var} = {self.get_value_for_basic_var(var)}" for var in self.basic_variables)
-        return "\n".join((header, objective, *(row.format(rhs_width, widths) for row in self._rows), f"Basis: {basis}"))
+        return "\n".join((
+            header,
+            objective,
+            *(row.format(rhs_width, widths) for row in self._rows),
+            f"Basis: {basis}",
+            f"Objective value: {self.objective_value}",
+        ))
