@@ -21,8 +21,8 @@ class TableauRow:
 class Tableau:
 
 
-    # Tuples for reduced costs and for constraint expressions must follow the variable ordering. Enfact
-    # the property variable must return an Iterable that produces variables accordingly to this ordering.
+    # Tuples for reduced costs and for constraint expressions must follow the variable ordering (self._variables is ordered in natural ordering variables). 
+    # Also the property variable must return an Iterable that produces variables accordingly to this ordering.
     # For example, if the variable ordering is (x1, x2, x3, sl1, sl2), then the reduced cost
     # tuple (2, 0, 1, 0, -1) represent a reduced cost of 2 for x1, of 0 for x2, etc...
     # The same must be true even for constraint tuples
@@ -79,10 +79,28 @@ class Tableau:
         return self.is_feasible_basis() and all(c >= Fraction(0) for c in self._reduced_cost_coefficients)
 
     def candidate_entering_variables(self) -> Iterable[Variable]:
+        '''returns the variable that have negative reduced cost coefficients'''
         for var, reduced_cost in zip(self._variables, self._reduced_cost_coefficients):
             if reduced_cost < 0:
                 yield var
 
+    def is_unbounded_problem(self) -> bool:
+        '''returns whether the problem represented by this tableau is unbounded. A problem is unbounded
+        if exists a tableau where there are possible entering variables but no feasible pivot, meaning that
+        all candidates pivot are negative (or equal to 0). In other words there is almost one candidate entering variables
+        where all candidates pivot are not elegible. An unbounded problem is feasible'''
+        constraints_coeffs : Iterable[Iterable[Fraction]]= (self.get_constraints_coefficient(var) for var in self.candidate_entering_variables())
+        return self.is_feasible_basis() and \
+               any(all(c <= Fraction(0) for c in coeffs) for coeffs in constraints_coeffs)
+    
+
+    def get_constraints_coefficient(self, var : Variable) -> Iterable[Fraction]: 
+        '''given a variable returns the coefficients of that variable for every constraint in the tableau'''
+        if var not in self._variables:
+            raise ValueError(f'{var} is not part of this tableau variables, that are: {self._variables}')
+        index = self.get_var_index(var)
+        return (row.coefficients[index] for row in self._rows)
+            
     def get_var_index(self, var : Variable):
         '''
         Given a variable of the problem that represent this tableau, this method returns its index 

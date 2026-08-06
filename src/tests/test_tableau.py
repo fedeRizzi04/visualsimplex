@@ -71,27 +71,85 @@ def test_get_var_index_returns_the_column_and_rejects_unknown_variables():
 
 
 @pytest.mark.parametrize(
-    ("rhs_values", "reduced_costs", "expected_feasible", "expected_optimal"),
+    (
+        "rhs_values",
+        "reduced_costs",
+        "row_coefficients",
+        "expected_feasible",
+        "expected_optimal",
+        "expected_unbounded",
+    ),
     [
-        ((), (), True, True),
-        ((Fraction(0), Fraction(3, 2)), (Fraction(0), Fraction(2, 3)), True, True),
-        ((Fraction(0), Fraction(-1, 3)), (Fraction(0), Fraction(1)), False, False),
-        ((Fraction(0), Fraction(1)), (Fraction(0), Fraction(-1, 3)), True, False),
+        ((), (), (), True, True, False),
+        (
+            (Fraction(0), Fraction(3, 2)),
+            (Fraction(0), Fraction(2, 3)),
+            ((Fraction(0), Fraction(1)), (Fraction(1), Fraction(0))),
+            True,
+            True,
+            False,
+        ),
+        (
+            (Fraction(0), Fraction(-1, 3)),
+            (Fraction(-1), Fraction(0)),
+            ((Fraction(0), Fraction(1)), (Fraction(0), Fraction(1))),
+            False,
+            False,
+            False,
+        ),
+        (
+            (Fraction(0), Fraction(1)),
+            (Fraction(-1, 3), Fraction(0)),
+            ((Fraction(0), Fraction(1)), (Fraction(2), Fraction(1))),
+            True,
+            False,
+            False,
+        ),
+        (
+            (Fraction(0), Fraction(1)),
+            (Fraction(-1, 3), Fraction(0)),
+            ((Fraction(0), Fraction(1)), (Fraction(0), Fraction(1))),
+            True,
+            False,
+            True,
+        ),
+        (
+            (Fraction(1), Fraction(2)),
+            (Fraction(-1), Fraction(-2), Fraction(0)),
+            ((Fraction(1), Fraction(0), Fraction(1)), (Fraction(0), Fraction(-1), Fraction(0))),
+            True,
+            False,
+            True,
+        ),
     ],
-    ids=("empty", "zero-boundaries", "negative-rhs", "negative-reduced-cost"),
+    ids=(
+        "empty",
+        "zero-boundaries",
+        "negative-rhs",
+        "eligible-pivot",
+        "zero-pivot-column",
+        "one-unbounded-candidate-among-many",
+    ),
 )
 def test_basis_feasibility_and_optimality_edge_cases(
-    rhs_values, reduced_costs, expected_feasible, expected_optimal
+    rhs_values,
+    reduced_costs,
+    row_coefficients,
+    expected_feasible,
+    expected_optimal,
+    expected_unbounded,
 ):
     tableau = Tableau.__new__(Tableau)
+    tableau._variables = tuple(var(f"x{i}") for i in range(len(reduced_costs)))
     tableau._rows = tuple(
-        TableauRow((), rhs, var(f"s{i}", VarKind.SLACK))
-        for i, rhs in enumerate(rhs_values)
+        TableauRow(coefficients, rhs, var(f"s{i}", VarKind.SLACK))
+        for i, (rhs, coefficients) in enumerate(zip(rhs_values, row_coefficients))
     )
     tableau._reduced_cost_coefficients = reduced_costs
 
     assert tableau.is_feasible_basis() is expected_feasible
     assert tableau.is_optimal_basis() is expected_optimal
+    assert tableau.is_unbounded_problem() is expected_unbounded
 
 
 def test_candidate_entering_variables_returns_variables_with_negative_reduced_costs():
@@ -102,6 +160,21 @@ def test_candidate_entering_variables_returns_variables_with_negative_reduced_co
     tableau._reduced_cost_coefficients = (Fraction(-2), Fraction(0), Fraction(-1, 3), Fraction(0))
 
     assert tuple(tableau.candidate_entering_variables()) == (x1, x3)
+
+
+def test_get_constraints_coefficient_returns_the_column_and_rejects_unknown_variables():
+    x1, x2 = var("x1"), var("x2")
+    tableau = Tableau.__new__(Tableau)
+    tableau._variables = (x1, x2)
+    tableau._rows = (
+        TableauRow((Fraction(2), Fraction(0)), Fraction(1), var("s1", VarKind.SLACK)),
+        TableauRow((Fraction(-1, 3), Fraction(4)), Fraction(2), var("s2", VarKind.SLACK)),
+    )
+
+    assert tuple(tableau.get_constraints_coefficient(x1)) == (Fraction(2), Fraction(-1, 3))
+    assert tuple(tableau.get_constraints_coefficient(x2)) == (Fraction(0), Fraction(4))
+    with pytest.raises(ValueError, match="not part of this tableau variables"):
+        tableau.get_constraints_coefficient(var("unknown"))
 
 
 def test_tableau_row_string_contains_rhs_and_coefficients():
