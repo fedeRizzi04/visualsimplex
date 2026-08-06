@@ -38,14 +38,14 @@ class Tableau:
         self._rows : tuple[TableauRow] = tuple(self._build_tableau_rows(constraints))
 
     def _build_reduced_costs_coefficients(self, objective_expr : Expression) -> Iterable[Fraction]:
-        return (objective_expr.coefficient_of(var) for var in self.variables)
+        return (objective_expr.coefficient_of(var) for var in self._variables)
 
     def _build_tableau_rows(self, constraints : Iterable[Constraint]) -> Iterable[TableauRow]:
         rows = list() # set is more efficients but I need insertion order :(
         for c in constraints: 
             expr : Expression = c.expr
             rhs : Fraction = c.rhs
-            coefficients : tuple[Fraction] = tuple(expr.coefficient_of(v) for v in self.variables)
+            coefficients : tuple[Fraction] = tuple(expr.coefficient_of(v) for v in self._variables)
             basic_var : Variable = get_basic_var(expr, self._basic_vars)
             rows.append(TableauRow(coefficients, rhs, basic_var))
         return iter(rows)
@@ -86,11 +86,10 @@ class Tableau:
         return index
 
     def __str__(self) -> str:
-        variables = tuple(self.variables)
         objective_coefficient = self._objective_tableau_coeff
         rhs_width = max(len(str(value)) for value in (objective_coefficient, *(row.rhs for row in self._rows)))
-        widths = tuple(max(len(str(var)), *(len(str(row.coefficients[i])) for row in self._rows), len(str(self._reduced_cost_coefficients[i]))) for i, var in enumerate(variables))
-        header = f"{'':>{rhs_width}} | " + "  ".join(f"{var!s:>{width}}" for var, width in zip(variables, widths))
+        widths = tuple(max(len(str(var)), *(len(str(row.coefficients[i])) for row in self._rows), len(str(self._reduced_cost_coefficients[i]))) for i, var in enumerate(self._variables))
+        header = f"{'':>{rhs_width}} | " + "  ".join(f"{var!s:>{width}}" for var, width in zip(self._variables, widths))
         objective = f"{objective_coefficient!s:>{rhs_width}} | " + "  ".join(f"{coefficient!s:>{width}}" for coefficient, width in zip(self._reduced_cost_coefficients, widths))
         basis = ", ".join(f"{var} = {self.get_value_for_basic_var(var)}" for var in self.basic_variables)
         return "\n".join((
