@@ -178,6 +178,14 @@ def test_canonical_form_requires_minimization_and_excludes_basic_variables_from_
         make_canonical_problem(objective=objective_with_zero_cost_basic_var)
 
 
+def test_canonical_form_rejects_declared_variables_not_present_in_the_problem():
+    canonical = make_canonical_problem()
+    undeclared = variable("undeclared")
+
+    with pytest.raises(ValueError, match="must belong to the problem"):
+        CanonicalFormLPProblem(canonical.problem, canonical.basic_vars, canonical.non_basic_vars | frozenset((undeclared,)))
+
+
 def test_canonical_form_requires_one_distinct_slack_and_one_basic_variable_per_constraint():
     x1 = variable("x1")
     x2 = variable("x2")

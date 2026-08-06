@@ -10,7 +10,7 @@ def problem_variables(objective : Objective, constraints : Iterable[Constraint])
 
 @dataclass(frozen=True)
 class CanonicalFormLPProblem:
-    problem : LPProblem
+    problem : LPProblem # guaranteed that all variables are compatible with all the others
     basic_vars : frozenset[Variable] = field(default_factory=frozenset)
     non_basic_vars : frozenset[Variable] = field(default_factory=frozenset)
 
@@ -18,13 +18,15 @@ class CanonicalFormLPProblem:
         objective = self.problem.get_objective()
         constraints = tuple(self.problem)
         n_constraints = len(constraints)
+        variables = self.basic_vars | self.non_basic_vars
 
         if objective.opt_sense is not OptimizationSense.MINIMIZE:
             raise ValueError("a canonical-form problem must minimize its objective")
-
+        if not variables <= frozenset(problem_variables(objective, constraints)):
+            raise ValueError("basic and non-basic variables must belong to the problem")
         if len(self.basic_vars) != n_constraints:
             raise ValueError("the number of basic variables must equal the number of constraints")
-        if sum(var.kind is VarKind.SLACK for var in self.basic_vars | self.non_basic_vars) != n_constraints:
+        if sum(var.kind is VarKind.SLACK for var in variables) != n_constraints:
             raise ValueError("a canonical-form problem must have one slack variable per constraint")
         
         rows = tuple({term.var: term.coeff for term in constraint.expr} for constraint in constraints)
