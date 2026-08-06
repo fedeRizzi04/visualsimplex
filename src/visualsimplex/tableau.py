@@ -79,9 +79,8 @@ class Tableau:
         in the order. For example, if the problem have variables (x1, x2, x3, sl1) in such ordering, then the index of
         sl1 is 3 
         '''
-        variables = tuple(self.variables)
         try:
-            index = variables.index(var)
+            index = self._variables.index(var)
         except ValueError as e: 
             raise ValueError(f'{var} is not part of {self}') from e
         return index
