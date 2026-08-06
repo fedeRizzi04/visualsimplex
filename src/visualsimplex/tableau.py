@@ -78,6 +78,10 @@ class Tableau:
     def is_optimal_basis(self) -> bool:
         return self.is_feasible_basis() and all(c >= Fraction(0) for c in self._reduced_cost_coefficients)
 
+    def candidate_entering_variables(self) -> Iterable[Variable]:
+        for var, reduced_cost in zip(self._variables, self._reduced_cost_coefficients):
+            if reduced_cost < 0:
+                yield var
 
     def get_var_index(self, var : Variable):
         '''

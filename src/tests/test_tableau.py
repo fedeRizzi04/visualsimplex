@@ -94,6 +94,16 @@ def test_basis_feasibility_and_optimality_edge_cases(
     assert tableau.is_optimal_basis() is expected_optimal
 
 
+def test_candidate_entering_variables_returns_variables_with_negative_reduced_costs():
+    x1, x2, x3, s = var("x1"), var("x2"), var("x3"), var("s", VarKind.SLACK)
+    tableau = Tableau.__new__(Tableau)
+    tableau._basic_vars = frozenset((s,))
+    tableau._variables = (x1, x2, x3, s)
+    tableau._reduced_cost_coefficients = (Fraction(-2), Fraction(0), Fraction(-1, 3), Fraction(0))
+
+    assert tuple(tableau.candidate_entering_variables()) == (x1, x3)
+
+
 def test_tableau_row_string_contains_rhs_and_coefficients():
     row = TableauRow((Fraction(-1, 2), Fraction(0), Fraction(3)), Fraction(5, 4), var("s", VarKind.SLACK))
 
@@ -119,6 +129,7 @@ def test_lp_problem_to_tableau_integration_preserves_variable_and_constraint_ali
         TableauRow((Fraction(1), Fraction(1), Fraction(1), Fraction(0)), Fraction(400), var("sl0", VarKind.SLACK)),
         TableauRow((Fraction(2), Fraction(1), Fraction(0), Fraction(1)), Fraction(5), var("sl1", VarKind.SLACK)),
     )
+    assert tuple(tableau.candidate_entering_variables()) == (x1, x2)
     assert str(tableau) == (
         "    |    x1  x2  sl0  sl1\n"
         "7/2 | -10/3  -3    0    0\n"
