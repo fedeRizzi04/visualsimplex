@@ -291,6 +291,24 @@ def test_pivot_rejects_invalid_variables_and_ineligible_pivots(entering, leaving
         tableau.pivot(variables[entering], variables[leaving])
 
 
+def test_to_canonical_form_problem_preserves_tableau_state_in_a_round_trip():
+    x, s = var("x"), var("s", VarKind.SLACK)
+    problem = LPProblem(
+        Objective(Expression((Term(x, Fraction(-2)),)), OptimizationSense.MINIMIZE),
+        (Constraint(Expression((Term(x, Fraction(3)), Term(s, Fraction(1)))), Fraction(6), ConstraintSense.EQ),),
+    )
+    canonical_problem = CanonicalFormLPProblem(problem, frozenset((s,)), frozenset((x,)))
+    tableau = Tableau(canonical_problem, Fraction(7, 2))
+
+    rebuilt_tableau = Tableau(tableau.to_canonical_form_problem(), tableau._objective_tableau_coeff)
+
+    assert rebuilt_tableau._basic_vars == tableau._basic_vars
+    assert rebuilt_tableau._variables == tableau._variables
+    assert rebuilt_tableau._reduced_cost_coefficients == tableau._reduced_cost_coefficients
+    assert rebuilt_tableau._rows == tableau._rows
+    assert rebuilt_tableau._objective_tableau_coeff == tableau._objective_tableau_coeff
+
+
 def test_tableau_row_string_contains_rhs_and_coefficients():
     row = TableauRow((Fraction(-1, 2), Fraction(0), Fraction(3)), Fraction(5, 4), var("s", VarKind.SLACK))
 

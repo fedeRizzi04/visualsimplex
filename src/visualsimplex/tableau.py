@@ -1,10 +1,10 @@
 from __future__ import annotations
-from visualsimplex.value_objects import Variable, Expression, Constraint, ConstraintSense, Objective, OptimizationSense, Term
-from visualsimplex.lp_problem import CanonicalFormLPProblem, LPProblem
+from visualsimplex.value_objects import Variable, Expression, Constraint
+from visualsimplex.lp_problem import CanonicalFormLPProblem
 from typing import Iterable
 from fractions import Fraction
 from dataclasses import dataclass
-from visualsimplex.utils import get_basic_var, update_row_coeffs_after_pivot
+from visualsimplex.utils import get_basic_var, tableau_to_canonical_form_problem, update_row_coeffs_after_pivot
 
 @dataclass(frozen=True)
 class TableauRow:
@@ -187,24 +187,11 @@ class Tableau:
         objective_factor = self._reduced_cost_coefficients[entering_index]
         new_objective_coefficients = tuple(update_row_coeffs_after_pivot(self._reduced_cost_coefficients, normalized_coefficients, objective_factor))
         new_objective_tableau_coeff = self._objective_tableau_coeff - objective_factor * normalized_rhs
-        new_basic_vars = frozenset((self._basic_vars - {leaving}) | {entering})
-        new_non_basic_vars = frozenset(self._variables) - new_basic_vars
-
-        objective_terms : list[Term] = []
-        for var, coefficient in zip(self._variables, new_objective_coefficients):
-            if var in new_non_basic_vars:
-                objective_terms.append(Term(var, coefficient))
-        objective = Objective(Expression(objective_terms), OptimizationSense.MINIMIZE)
-
-        constraints : list[Constraint] = []
-        for row in new_rows:
-            terms = []
-            for var, coefficient in zip(self._variables, row.coefficients):
-                terms.append(Term(var, coefficient))
-            constraints.append(Constraint(Expression(terms), row.rhs, ConstraintSense.EQ))
-
-        problem = CanonicalFormLPProblem(LPProblem(objective, constraints), new_basic_vars, new_non_basic_vars)
+        problem = tableau_to_canonical_form_problem(self._variables, new_objective_coefficients, new_rows)
         return Tableau(problem, new_objective_tableau_coeff)
+
+    def to_canonical_form_problem(self) -> CanonicalFormLPProblem:
+        return tableau_to_canonical_form_problem(self._variables, self._reduced_cost_coefficients, self._rows)
 
 
 

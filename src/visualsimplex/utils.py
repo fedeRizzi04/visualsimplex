@@ -1,7 +1,12 @@
+from __future__ import annotations
 from collections.abc import Set
 from fractions import Fraction
-from typing import Iterable
-from visualsimplex.value_objects import Constraint, Expression, Objective, Variable
+from typing import TYPE_CHECKING, Iterable
+from visualsimplex.value_objects import Constraint, ConstraintSense, Expression, Objective, OptimizationSense, Term, Variable
+
+if TYPE_CHECKING:
+    from visualsimplex.lp_problem import CanonicalFormLPProblem
+    from visualsimplex.tableau import TableauRow
 
 
 def problem_variables(objective : Objective, constraints : Iterable[Constraint]) -> Iterable[Variable]:
@@ -41,3 +46,29 @@ def update_row_coeffs_after_pivot(row_coeffs : Iterable[Fraction], normalized_pi
     '''
     return (row_coefficient - non_pivot_row_pivot_column_coeff * pivot_row_coefficient
             for row_coefficient, pivot_row_coefficient in zip(row_coeffs, normalized_pivot_row_coeffs))
+
+
+def tableau_to_canonical_form_problem(variables : Iterable[Variable], reduced_cost_coeffs : Iterable[Fraction], rows : Iterable[TableauRow]) -> CanonicalFormLPProblem:
+    '''builds the canonical-form LP problem represented by tableau variables, reduced costs and rows'''
+    from visualsimplex.lp_problem import CanonicalFormLPProblem, LPProblem
+
+    variables = tuple(variables)
+    reduced_cost_coeffs = tuple(reduced_cost_coeffs)
+    rows = tuple(rows)
+    basic_vars = frozenset(row.basic_var for row in rows)
+    non_basic_vars = frozenset(variables) - basic_vars
+
+    objective_terms : list[Term] = []
+    for var, coefficient in zip(variables, reduced_cost_coeffs):
+        if var in non_basic_vars:
+            objective_terms.append(Term(var, coefficient))
+    objective = Objective(Expression(objective_terms), OptimizationSense.MINIMIZE)
+
+    constraints : list[Constraint] = []
+    for row in rows:
+        terms = []
+        for var, coefficient in zip(variables, row.coefficients):
+            terms.append(Term(var, coefficient))
+        constraints.append(Constraint(Expression(terms), row.rhs, ConstraintSense.EQ))
+
+    return CanonicalFormLPProblem(LPProblem(objective, constraints), basic_vars, non_basic_vars)
