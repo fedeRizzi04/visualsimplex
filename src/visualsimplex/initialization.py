@@ -29,6 +29,8 @@ class InitializationPivotStep(PivotStep):
 
 
 class InitializationStrategy(ABC):
+    '''Strategy that must return a feasible tableau or raise InfeasibleProblemError when it proves infeasibility.'''
+
     def __init__(self):
         self._steps : list[InitializationPivotStep] = []
 
@@ -37,6 +39,7 @@ class InitializationStrategy(ABC):
         return iter(self._steps)
 
     def run(self, tableau : Tableau) -> Tableau:
+        '''Reset the recorded steps and execute the initialization strategy.'''
         if tableau.is_feasible_basis():
             raise ValueError('cannot initialize a tableau whose basis is already feasible')
         self._steps.clear()
@@ -73,11 +76,10 @@ class BalinskiGomoryInitializer(InitializationStrategy):
             violated_row = next(row for row in current.rows if row.basic_var == violated_row_basic_var)
             entering = self._choose_entering_variable(current, violated_row.coefficients, violated_row_basic_var)
             entering_index = current.get_var_index(entering)
-            candidates = tuple(LeavingCandidate(row.basic_var, row.coefficients[entering_index], row.rhs) for row in current.rows if row.basic_var != violated_row_basic_var and row.rhs >= 0 and row.coefficients[entering_index] > 0)
+            candidates = tuple(LeavingCandidate(row.basic_var, row.coefficients[entering_index], row.rhs)
+                                 for row in current.rows if row.basic_var != violated_row_basic_var and row.rhs >= 0 and row.coefficients[entering_index] > 0)
             if candidates:
                 leaving = self._leaving_rule(candidates)
-                if leaving not in candidates:
-                    raise ValueError('the leaving-variable rule returned a candidate that is not eligible')
                 kind = InitializationPivotKind.AUXILIARY_OPTIMIZATION
             else:
                 leaving = LeavingCandidate(violated_row_basic_var, violated_row.coefficients[entering_index], violated_row.rhs)

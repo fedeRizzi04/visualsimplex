@@ -206,13 +206,10 @@ class Tableau:
         return tableau_to_canonical_form_problem(self._variables, self._reduced_cost_coefficients, self._rows)
 
     def initialize(self, strategy : InitializationStrategy) -> Tableau:
-        '''Initialize an infeasible tableau with strategy and return a new feasible tableau.'''
+        '''Initialize this tableau using a strategy that returns a feasible tableau or raises InfeasibleProblemError.'''
         if self.is_feasible_basis():
             raise ValueError('cannot initialize a tableau whose basis is already feasible')
-        initialized = strategy.run(self)
-        if not initialized.is_feasible_basis():
-            raise RuntimeError('the initialization strategy returned a tableau with an infeasible basis')
-        return initialized
+        return strategy.run(self) # could raise InfeasibleProblemError
 
 
 

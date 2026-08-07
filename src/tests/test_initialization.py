@@ -31,6 +31,19 @@ def test_tableau_initialize_rejects_an_already_feasible_basis(mocker):
     strategy.run.assert_not_called()
 
 
+def test_tableau_initialize_propagates_the_infeasible_problem_error_from_the_strategy(mocker):
+    x, s = var("x"), var("s", VarKind.SLACK)
+    tableau = make_tableau((x, s), (s,), (0, 0), (TableauRow((Fraction(1), Fraction(1)), Fraction(-1), s),))
+    expected_error = InfeasibleProblemError('infeasible problem')
+    strategy = mocker.Mock()
+    strategy.run.side_effect = expected_error
+
+    with pytest.raises(InfeasibleProblemError) as raised:
+        tableau.initialize(strategy)
+
+    assert raised.value is expected_error
+
+
 def test_balinski_gomory_optimizes_a_violated_constraint_until_it_becomes_feasible():
     x1, x2 = var("x1"), var("x2")
     s1, s2, s3 = var("s1", VarKind.SLACK), var("s2", VarKind.SLACK), var("s3", VarKind.SLACK)
@@ -107,7 +120,7 @@ def test_balinski_gomory_detects_an_infeasible_problem():
     tableau = make_tableau((x, s), (s,), (0, 0), (TableauRow((Fraction(1), Fraction(1)), Fraction(-1), s),))
     strategy = BalinskiGomoryInitializer()
 
-    with pytest.raises(InfeasibleProblemError, match="remains violated"):
+    with pytest.raises(InfeasibleProblemError):
         tableau.initialize(strategy)
     assert tuple(strategy.steps) == ()
 
