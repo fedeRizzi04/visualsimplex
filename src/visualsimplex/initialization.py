@@ -60,7 +60,7 @@ class BalinskiGomoryInitializer(InitializationStrategy):
     def initialize(self, tableau : Tableau) -> Tableau:
         current = tableau
         while not current.is_feasible_basis():
-            violated_constraint = self._choose_violated_constraint(current)
+            violated_constraint = self._choose_violated_constraint(current) # ValueError cannot be raised because the basis is not feasible, so there is at least one violated constraint
             current = self._repair_constraint(current, violated_constraint.basic_var)
         return current
 
