@@ -4,6 +4,7 @@ from enum import Enum
 from fractions import Fraction
 from typing import Iterable
 from visualsimplex.rules import EnteringCandidate, EnteringVariableRule, LeavingCandidate, LeavingVariableRule, ViolatedConstraintCandidate, ViolatedConstraintRule, bland_rule, first_violated_constraint_rule, minimum_ratio_rule
+from visualsimplex.steps import PivotStep
 from visualsimplex.tableau import Tableau
 from visualsimplex.value_objects import Variable
 
@@ -18,17 +19,13 @@ class InitializationPivotKind(Enum):
 
 
 @dataclass(frozen=True)
-class InitializationPivotStep:
-    before : Tableau # tableau before the pivot.
-    violated_row_basic_var : Variable # basic variable used to identify the violated row being repaired.
-    entering : Variable # non-basic variable entering the basis.
-    leaving : Variable # basic variable leaving the basis.
-    pivot : Fraction # coefficient used as pivot.
-    kind : InitializationPivotKind # reason why this pivot is performed.
-    after : Tableau # tableau produced by the pivot.
+class InitializationPivotStep(PivotStep):
+    violated_row_basic_var : Variable # basic variable used to identify the violated row being repaired
+    kind : InitializationPivotKind # reason why this pivot is performed
 
-    def __str__(self) -> str:
-        return f'{self.kind.value}: {self.entering} enters, {self.leaving} leaves, pivot = {self.pivot}'
+    @property
+    def description(self) -> str:
+        return self.kind.value
 
 
 class InitializationStrategy(ABC):
@@ -86,7 +83,7 @@ class BalinskiGomoryInitializer(InitializationStrategy):
                 leaving = LeavingCandidate(violated_row_basic_var, violated_row.coefficients[entering_index], violated_row.rhs)
                 kind = InitializationPivotKind.FEASIBILITY_REPAIR
             after = current.pivot(entering, leaving.leaving_var)
-            self._steps.append(InitializationPivotStep(current, violated_row_basic_var, entering, leaving.leaving_var, leaving.pivot, kind, after))
+            self._steps.append(InitializationPivotStep(current, entering, leaving.leaving_var, leaving.pivot, after, violated_row_basic_var, kind))
             current = after
             if kind is InitializationPivotKind.FEASIBILITY_REPAIR:
                 break

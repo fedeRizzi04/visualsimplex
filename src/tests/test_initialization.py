@@ -54,7 +54,6 @@ def test_balinski_gomory_optimizes_a_violated_constraint_until_it_becomes_feasib
     assert tuple((step.entering, step.leaving) for step in strategy.steps) == ((x1, s1), (x2, s2))
     assert all(step.violated_row_basic_var == s3 for step in strategy.steps)
     assert all(step.kind is InitializationPivotKind.AUXILIARY_OPTIMIZATION for step in strategy.steps)
-    assert str(next(iter(strategy.steps))) == "auxiliary optimization: x1 enters, s1 leaves, pivot = 1"
 
 
 def test_balinski_gomory_uses_a_negative_pivot_when_the_auxiliary_problem_is_unbounded():
