@@ -91,7 +91,7 @@ def test_simplex_algorithm_reports_an_unbounded_problem():
     assert not report.final_tableau.is_optimal_basis()
 
 
-def test_simplex_algorithm_reports_an_infeasible_problem_and_preserves_the_last_tableau():
+def test_simplex_algorithm_reports_an_infeasible_problem_and_uses_the_initial_tableau_when_no_pivots_were_performed():
     x = var('x')
     lp_problem = problem(
         (Term(x, Fraction(1)),),
