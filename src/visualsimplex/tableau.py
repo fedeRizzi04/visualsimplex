@@ -4,6 +4,7 @@ from visualsimplex.lp_problem import CanonicalFormLPProblem
 from typing import Iterable
 from fractions import Fraction
 from dataclasses import dataclass
+from visualsimplex.rules import EnteringCandidate, EnteringVariableRule, LeavingCandidate, LeavingVariableRule
 from visualsimplex.utils import get_basic_var, tableau_to_canonical_form_problem, update_row_coeffs_after_pivot
 
 @dataclass(frozen=True)
@@ -18,13 +19,6 @@ class TableauRow:
     def format(self, rhs_width : int, coefficient_widths : tuple[int, ...]) -> str:
         coefficients = "  ".join(f"{coefficient!s:>{width}}" for coefficient, width in zip(self.coefficients, coefficient_widths))
         return f"{self.rhs!s:>{rhs_width}} | {coefficients}"
-
-
-@dataclass(frozen=True)
-class LeavingVariableInfo:
-    leaving_var : Variable
-    pivot : Fraction
-    index_of_constraint : int
 
 class Tableau:
 
@@ -61,6 +55,9 @@ class Tableau:
 
     @property
     def variables(self) -> Iterable[Variable]:
+        '''returns the variables of the LP problem represented by this tableau. The order of the variables
+        returned by this method defines the order of the reduced costs and constraint coefficients of this tableau
+        '''
         return iter(self._variables)
     
     @property
@@ -99,34 +96,39 @@ class Tableau:
     def is_optimal_basis(self) -> bool:
         return self.is_feasible_basis() and all(c >= Fraction(0) for c in self._reduced_cost_coefficients)
 
-    def candidate_entering_variables(self) -> Iterable[Variable]:
+    def entering_candidate_variables(self) -> Iterable[Variable]:
         '''returns the variable that have negative reduced cost coefficients'''
         for var, reduced_cost in zip(self._variables, self._reduced_cost_coefficients):
             if reduced_cost < 0:
                 yield var
 
-    def leaving_variable(self, entering : Variable) -> LeavingVariableInfo:
-        '''given a candidate entering variable returns a LeavingVariableInfo object. It represent the leaving variable
-        from basis, the value of the pivot and the index of the constraint where the pivot is in the tableau (starting from 0)
-        '''
-        if entering not in self.candidate_entering_variables():
+    def entering_variable(self, rule : EnteringVariableRule) -> Variable:
+        '''Choose an entering variable using rule and validate the returned variable.'''
+        candidates = (EnteringCandidate(var, reduced_cost) for var, reduced_cost in self.reduced_costs if reduced_cost < 0)
+        entering = rule(candidates)
+        return entering
+
+    def leaving_variable(self, entering : Variable, rule : LeavingVariableRule) -> LeavingCandidate:
+        '''Given a candidate entering variable, choose and return an eligible leaving candidate using rule.'''
+        if entering not in self.entering_candidate_variables():
             raise ValueError(f'{entering} is not a candidate entering variable in the following tableau:\n{self}')
         column_index_var = self.get_var_index(entering)
-        eligible_rows = ((i, row) for i, row in enumerate(self._rows) if row.rhs >= 0 and row.coefficients[column_index_var] > 0) # rows that have a non-negative rhs and a positive pivot candidate
-        try:
-            # min on an empty iterable raises ValueError 
-            index_constraint, row = min(eligible_rows, key=lambda item: item[1].rhs / item[1].coefficients[column_index_var]) # minimum ratio test on elegible rows
-        except ValueError as e:
+        candidates = tuple(LeavingCandidate(row.basic_var, row.coefficients[column_index_var], row.rhs) for row in self._rows if row.rhs >= 0 and row.coefficients[column_index_var] > 0)
+        if not candidates:
             problem_status = ', the problem is unbounded!' if self.is_feasible_basis() else ''
-            raise ValueError(f'{entering} has a negative reduced cost but no eligible pivot{problem_status}') from e
-        return LeavingVariableInfo(row.basic_var, row.coefficients[column_index_var], index_constraint)
+            raise ValueError(f'{entering} has a negative reduced cost but no eligible pivot{problem_status}')
+
+        selected = rule(candidates)
+        if selected not in candidates:
+            raise ValueError('the leaving-variable rule returned a candidate that is not eligible')
+        return selected
 
     def is_unbounded_problem(self) -> bool:
         '''returns whether the problem represented by this tableau is unbounded. A problem is unbounded
         if exists a tableau where there are possible entering variables but no feasible pivot, meaning that
         all candidates pivot are negative (or equal to 0). In other words there is almost one candidate entering variables
         where all candidates pivot are not elegible. An unbounded problem is feasible'''
-        constraints_coeffs : Iterable[Iterable[Fraction]]= (self.get_constraints_coefficient(var) for var in self.candidate_entering_variables())
+        constraints_coeffs : Iterable[Iterable[Fraction]]= (self.get_constraints_coefficient(var) for var in self.entering_candidate_variables())
         return self.is_feasible_basis() and \
                any(all(c <= Fraction(0) for c in coeffs) for coeffs in constraints_coeffs)
     
@@ -159,7 +161,7 @@ class Tableau:
            right hand side. Note that the leaving variable can also be such that the corresponding pivot is not
            the one that minimize the minimum ratio with the rhs.
         '''
-        if entering not in self.candidate_entering_variables():
+        if entering not in self.entering_candidate_variables():
             raise ValueError(f'{entering} is not a candidate entering variable in the following tableau:\n{self}')
         if leaving not in self._basic_vars:
             raise ValueError(f'{leaving} is not a basic variable in the following tableau:\n{self}')
