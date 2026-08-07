@@ -47,3 +47,20 @@ def minimum_ratio_rule(candidates : Iterable[LeavingCandidate]) -> LeavingCandid
         return min(candidates, key=lambda candidate: candidate.ratio)
     except ValueError as e:
         raise ValueError('no eligible leaving candidates provided') from e
+
+# violated constraint rules
+
+@dataclass(frozen=True)
+class ViolatedConstraintCandidate:
+    basic_var : Variable # basic var of the violated constraint
+    rhs : Fraction
+
+
+ViolatedConstraintRule = Callable[[Iterable[ViolatedConstraintCandidate]], ViolatedConstraintCandidate]
+
+def first_violated_constraint_rule(candidates : Iterable[ViolatedConstraintCandidate]) -> ViolatedConstraintCandidate:
+    '''Choose the first violated constraint, preserving tableau row order.'''
+    try:
+        return next(candidate for candidate in candidates if candidate.rhs < 0)
+    except StopIteration as e:
+        raise ValueError('no violated constraint candidates provided') from e

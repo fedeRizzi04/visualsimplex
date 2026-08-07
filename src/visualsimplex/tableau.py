@@ -1,11 +1,13 @@
 from __future__ import annotations
 from visualsimplex.value_objects import Variable, Expression, Constraint
 from visualsimplex.lp_problem import CanonicalFormLPProblem
-from typing import Iterable
+from typing import TYPE_CHECKING, Iterable
 from fractions import Fraction
 from dataclasses import dataclass
 from visualsimplex.rules import EnteringCandidate, EnteringVariableRule, LeavingCandidate, LeavingVariableRule
 from visualsimplex.utils import get_basic_var, tableau_to_canonical_form_problem, update_row_coeffs_after_pivot
+if TYPE_CHECKING:
+    from visualsimplex.initialization import InitializationStrategy
 
 @dataclass(frozen=True)
 class TableauRow:
@@ -96,27 +98,35 @@ class Tableau:
     def is_optimal_basis(self) -> bool:
         return self.is_feasible_basis() and all(c >= Fraction(0) for c in self._reduced_cost_coefficients)
 
+    def _require_feasible_basis(self) -> None:
+        if not self.is_feasible_basis():
+            raise ValueError('primal-simplex rules require a feasible basis')
+
     def entering_candidate_variables(self) -> Iterable[Variable]:
-        '''returns the variable that have negative reduced cost coefficients'''
+        '''Return the variables with negative reduced costs in a feasible tableau.'''
+        self._require_feasible_basis()
         for var, reduced_cost in zip(self._variables, self._reduced_cost_coefficients):
             if reduced_cost < 0:
                 yield var
 
     def entering_variable(self, rule : EnteringVariableRule) -> Variable:
-        '''Choose an entering variable using rule and validate the returned variable.'''
-        candidates = (EnteringCandidate(var, reduced_cost) for var, reduced_cost in self.reduced_costs if reduced_cost < 0)
+        '''Choose an entering variable for a primal-simplex step on a feasible tableau.'''
+        self._require_feasible_basis()
+        candidates = tuple(EnteringCandidate(var, reduced_cost) for var, reduced_cost in self.reduced_costs if reduced_cost < 0)
         entering = rule(candidates)
+        if entering not in (candidate.var for candidate in candidates):
+            raise ValueError('the entering-variable rule returned a variable that is not eligible')
         return entering
 
     def leaving_variable(self, entering : Variable, rule : LeavingVariableRule) -> LeavingCandidate:
-        '''Given a candidate entering variable, choose and return an eligible leaving candidate using rule.'''
+        '''Choose a leaving variable that preserves feasibility during a primal-simplex step.'''
+        self._require_feasible_basis()
         if entering not in self.entering_candidate_variables():
             raise ValueError(f'{entering} is not a candidate entering variable in the following tableau:\n{self}')
         column_index_var = self.get_var_index(entering)
         candidates = tuple(LeavingCandidate(row.basic_var, row.coefficients[column_index_var], row.rhs) for row in self._rows if row.rhs >= 0 and row.coefficients[column_index_var] > 0)
         if not candidates:
-            problem_status = ', the problem is unbounded!' if self.is_feasible_basis() else ''
-            raise ValueError(f'{entering} has a negative reduced cost but no eligible pivot{problem_status}')
+            raise ValueError(f'{entering} has a negative reduced cost but no eligible pivot, the problem is unbounded!')
 
         selected = rule(candidates)
         if selected not in candidates:
@@ -128,9 +138,9 @@ class Tableau:
         if exists a tableau where there are possible entering variables but no feasible pivot, meaning that
         all candidates pivot are negative (or equal to 0). In other words there is almost one candidate entering variables
         where all candidates pivot are not elegible. An unbounded problem is feasible'''
+        self._require_feasible_basis()
         constraints_coeffs : Iterable[Iterable[Fraction]]= (self.get_constraints_coefficient(var) for var in self.entering_candidate_variables())
-        return self.is_feasible_basis() and \
-               any(all(c <= Fraction(0) for c in coeffs) for coeffs in constraints_coeffs)
+        return any(all(c <= Fraction(0) for c in coeffs) for coeffs in constraints_coeffs)
     
 
     def get_constraints_coefficient(self, var : Variable) -> Iterable[Fraction]: 
@@ -154,25 +164,25 @@ class Tableau:
 
 
     def pivot(self, entering : Variable, leaving : Variable) -> Tableau:
-        '''given a valid entering variable and a valid leaving variable, this method computes a pivot
-           step starting from this tableau, and returns the resulting tableau after the pivot step.
-           A valid entering variable is one that have negative reduced cost and a valid leaving variable
-           is one that is a basic variable and the corresponding constraint have a positive pivot and a non negative
-           right hand side. Note that the leaving variable can also be such that the corresponding pivot is not
-           the one that minimize the minimum ratio with the rhs.
+        '''Perform the algebraic pivot selected by entering and leaving and return a new tableau.
+
+        This method deliberately knows nothing about simplex pivot-selection rules or basis feasibility. It only
+        requires entering to be non-basic, leaving to be basic and their pivot coefficient to be non-zero. Callers
+        such as the primal-simplex algorithm or an initialization strategy are responsible for choosing a pivot
+        that satisfies their own mathematical invariants.
         '''
-        if entering not in self.entering_candidate_variables():
-            raise ValueError(f'{entering} is not a candidate entering variable in the following tableau:\n{self}')
+        if entering not in self._variables:
+            raise ValueError(f'{entering} is not part of this tableau variables')
+        if entering in self._basic_vars:
+            raise ValueError(f'{entering} must be a non-basic variable in the following tableau:\n{self}')
         if leaving not in self._basic_vars:
             raise ValueError(f'{leaving} is not a basic variable in the following tableau:\n{self}')
 
         entering_index = self.get_var_index(entering)
         pivot_row = next(row for row in self._rows if row.basic_var == leaving)
         pivot = pivot_row.coefficients[entering_index]
-        if pivot <= 0:
-            raise ValueError(f'cannot pivoting on {pivot} because it\'s not a positive value')
-        if pivot_row.rhs < 0:
-            raise ValueError(f'cannot pivoting on {pivot} because the right hand side of the constraint in the tableau is {pivot_row.rhs}, that is negative')
+        if pivot == 0:
+            raise ValueError('cannot pivot on a zero coefficient')
 
         normalized_coefficients = tuple(coefficient / pivot for coefficient in pivot_row.coefficients)
         normalized_rhs = pivot_row.rhs / pivot
@@ -194,6 +204,15 @@ class Tableau:
 
     def to_canonical_form_problem(self) -> CanonicalFormLPProblem:
         return tableau_to_canonical_form_problem(self._variables, self._reduced_cost_coefficients, self._rows)
+
+    def initialize(self, strategy : InitializationStrategy) -> Tableau:
+        '''Initialize an infeasible tableau with strategy and return a new feasible tableau.'''
+        if self.is_feasible_basis():
+            raise ValueError('cannot initialize a tableau whose basis is already feasible')
+        initialized = strategy.run(self)
+        if not initialized.is_feasible_basis():
+            raise RuntimeError('the initialization strategy returned a tableau with an infeasible basis')
+        return initialized
 
 
 

@@ -3,7 +3,7 @@ from fractions import Fraction
 import pytest
 
 from visualsimplex import VarKind, Variable
-from visualsimplex.rules import LeavingCandidate, minimum_ratio_rule
+from visualsimplex.rules import LeavingCandidate, ViolatedConstraintCandidate, first_violated_constraint_rule, minimum_ratio_rule
 
 
 def leaving_candidate(symbol, *, pivot, rhs):
@@ -28,3 +28,17 @@ def test_minimum_ratio_rule_breaks_ties_by_candidate_order():
 def test_minimum_ratio_rule_rejects_an_empty_candidate_sequence():
     with pytest.raises(ValueError, match="no eligible leaving candidates"):
         minimum_ratio_rule(())
+
+
+def test_first_violated_constraint_rule_preserves_tableau_row_order():
+    first = ViolatedConstraintCandidate(Variable(VarKind.SLACK, "s1"), Fraction(-1))
+    second = ViolatedConstraintCandidate(Variable(VarKind.SLACK, "s2"), Fraction(-3))
+
+    assert first_violated_constraint_rule((first, second)) == first
+
+
+def test_first_violated_constraint_rule_rejects_candidates_with_non_negative_rhs():
+    candidate = ViolatedConstraintCandidate(Variable(VarKind.SLACK, "s"), Fraction(0))
+
+    with pytest.raises(ValueError, match="no violated constraint candidates"):
+        first_violated_constraint_rule((candidate,))
