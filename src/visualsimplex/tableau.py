@@ -1,9 +1,10 @@
-from visualsimplex.value_objects import Variable, Expression, Constraint
-from visualsimplex.lp_problem import CanonicalFormLPProblem
+from __future__ import annotations
+from visualsimplex.value_objects import Variable, Expression, Constraint, ConstraintSense, Objective, OptimizationSense, Term
+from visualsimplex.lp_problem import CanonicalFormLPProblem, LPProblem
 from typing import Iterable
 from fractions import Fraction
 from dataclasses import dataclass
-from visualsimplex.utils import get_basic_var
+from visualsimplex.utils import get_basic_var, update_row_coeffs_after_pivot
 
 @dataclass(frozen=True)
 class TableauRow:
@@ -148,6 +149,64 @@ class Tableau:
         except ValueError as e: 
             raise ValueError(f'{var} is not part of {self}') from e
         return index
+
+
+    def pivot(self, entering : Variable, leaving : Variable) -> Tableau:
+        '''given a valid entering variable and a valid leaving variable, this method computes a pivot
+           step starting from this tableau, and returns the resulting tableau after the pivot step.
+           A valid entering variable is one that have negative reduced cost and a valid leaving variable
+           is one that is a basic variable and the corresponding constraint have a positive pivot and a non negative
+           right hand side. Note that the leaving variable can also be such that the corresponding pivot is not
+           the one that minimize the minimum ratio with the rhs.
+        '''
+        if entering not in self.candidate_entering_variables():
+            raise ValueError(f'{entering} is not a candidate entering variable in the following tableau:\n{self}')
+        if leaving not in self._basic_vars:
+            raise ValueError(f'{leaving} is not a basic variable in the following tableau:\n{self}')
+
+        entering_index = self.get_var_index(entering)
+        pivot_row = next(row for row in self._rows if row.basic_var == leaving)
+        pivot = pivot_row.coefficients[entering_index]
+        if pivot <= 0:
+            raise ValueError(f'cannot pivoting on {pivot} because it\'s not a positive value')
+        if pivot_row.rhs < 0:
+            raise ValueError(f'cannot pivoting on {pivot} because the right hand side of the constraint in the tableau is {pivot_row.rhs}, that is negative')
+
+        normalized_coefficients = tuple(coefficient / pivot for coefficient in pivot_row.coefficients)
+        normalized_rhs = pivot_row.rhs / pivot
+        new_pivot_row = TableauRow(normalized_coefficients, normalized_rhs, entering)
+        new_rows : list[TableauRow] = []
+        for row in self._rows:
+            if row.basic_var == leaving:
+                new_rows.append(new_pivot_row)
+            else:
+                factor = row.coefficients[entering_index]
+                new_coefficients = tuple(update_row_coeffs_after_pivot(row.coefficients, normalized_coefficients, factor))
+                new_rows.append(TableauRow(new_coefficients, row.rhs - factor * normalized_rhs, row.basic_var))
+
+        objective_factor = self._reduced_cost_coefficients[entering_index]
+        new_objective_coefficients = tuple(update_row_coeffs_after_pivot(self._reduced_cost_coefficients, normalized_coefficients, objective_factor))
+        new_objective_tableau_coeff = self._objective_tableau_coeff - objective_factor * normalized_rhs
+        new_basic_vars = frozenset((self._basic_vars - {leaving}) | {entering})
+        new_non_basic_vars = frozenset(self._variables) - new_basic_vars
+
+        objective_terms : list[Term] = []
+        for var, coefficient in zip(self._variables, new_objective_coefficients):
+            if var in new_non_basic_vars:
+                objective_terms.append(Term(var, coefficient))
+        objective = Objective(Expression(objective_terms), OptimizationSense.MINIMIZE)
+
+        constraints : list[Constraint] = []
+        for row in new_rows:
+            terms = []
+            for var, coefficient in zip(self._variables, row.coefficients):
+                terms.append(Term(var, coefficient))
+            constraints.append(Constraint(Expression(terms), row.rhs, ConstraintSense.EQ))
+
+        problem = CanonicalFormLPProblem(LPProblem(objective, constraints), new_basic_vars, new_non_basic_vars)
+        return Tableau(problem, new_objective_tableau_coeff)
+
+
 
     def __str__(self) -> str:
         objective_coefficient = self._objective_tableau_coeff

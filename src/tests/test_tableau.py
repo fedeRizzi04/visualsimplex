@@ -239,6 +239,58 @@ def test_get_constraints_coefficient_returns_the_column_and_rejects_unknown_vari
         tableau.get_constraints_coefficient(var("unknown"))
 
 
+def test_pivot_returns_the_transformed_tableau_without_mutating_the_original():
+    x1, x2, s1, s2 = var("x1"), var("x2"), var("s1", VarKind.SLACK), var("s2", VarKind.SLACK)
+    tableau = Tableau.__new__(Tableau)
+    tableau._basic_vars = frozenset((s1, s2))
+    tableau._objective_tableau_coeff = Fraction(0)
+    tableau._variables = (x1, x2, s1, s2)
+    tableau._reduced_cost_coefficients = (Fraction(-3), Fraction(-2), Fraction(0), Fraction(0))
+    tableau._rows = (
+        TableauRow((Fraction(1), Fraction(1), Fraction(1), Fraction(0)), Fraction(4), s1),
+        TableauRow((Fraction(2), Fraction(1), Fraction(0), Fraction(1)), Fraction(5), s2),
+    )
+
+    result = tableau.pivot(x1, s2)
+
+    assert result._basic_vars == frozenset((x1, s1))
+    assert result._objective_tableau_coeff == Fraction(15, 2)
+    assert result._reduced_cost_coefficients == (Fraction(0), Fraction(-1, 2), Fraction(0), Fraction(3, 2))
+    assert result._rows == (
+        TableauRow((Fraction(0), Fraction(1, 2), Fraction(1), Fraction(-1, 2)), Fraction(3, 2), s1),
+        TableauRow((Fraction(1), Fraction(1, 2), Fraction(0), Fraction(1, 2)), Fraction(5, 2), x1),
+    )
+    assert tableau._basic_vars == frozenset((s1, s2))
+    assert tableau._objective_tableau_coeff == Fraction(0)
+    assert tableau._rows[1].basic_var == s2
+    assert tableau.pivot(x1, s1)._rows[1].rhs == Fraction(-3)
+
+
+@pytest.mark.parametrize(
+    ("entering", "leaving", "expected_error"),
+    [
+        ("x2", "s1", "not a candidate entering variable"),
+        ("x1", "x2", "not a basic variable"),
+        ("x1", "s1", "not a positive value"),
+        ("x1", "s2", "right hand side.*negative"),
+    ],
+)
+def test_pivot_rejects_invalid_variables_and_ineligible_pivots(entering, leaving, expected_error):
+    variables = {symbol: var(symbol, VarKind.SLACK if symbol.startswith("s") else VarKind.ORIGINAL) for symbol in ("x1", "x2", "s1", "s2")}
+    tableau = Tableau.__new__(Tableau)
+    tableau._basic_vars = frozenset((variables["s1"], variables["s2"]))
+    tableau._objective_tableau_coeff = Fraction(0)
+    tableau._variables = tuple(variables.values())
+    tableau._reduced_cost_coefficients = (Fraction(-1), Fraction(0), Fraction(0), Fraction(0))
+    tableau._rows = (
+        TableauRow((Fraction(0), Fraction(1), Fraction(1), Fraction(0)), Fraction(1), variables["s1"]),
+        TableauRow((Fraction(1), Fraction(0), Fraction(0), Fraction(1)), Fraction(-1), variables["s2"]),
+    )
+
+    with pytest.raises(ValueError, match=expected_error):
+        tableau.pivot(variables[entering], variables[leaving])
+
+
 def test_tableau_row_string_contains_rhs_and_coefficients():
     row = TableauRow((Fraction(-1, 2), Fraction(0), Fraction(3)), Fraction(5, 4), var("s", VarKind.SLACK))
 
