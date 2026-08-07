@@ -106,6 +106,24 @@ def test_simplex_algorithm_reports_an_infeasible_problem_and_uses_the_initial_ta
     assert report.termination_reason
 
 
+def test_simplex_algorithm_preserves_steps_produced_before_infeasibility_is_proved():
+    x = var('x')
+    lp_problem = problem(
+        (Term(x, Fraction(1)),),
+        (
+            Constraint(Expression((Term(x, Fraction(1)),)), Fraction(0), ConstraintSense.LE),
+            Constraint(Expression((Term(x, Fraction(1)),)), Fraction(1), ConstraintSense.GE),
+        ),
+    )
+
+    report = SimplexAlgorithm().solve_inequality_form(lp_problem)
+    initialization_steps = tuple(report.initialization_steps)
+
+    assert report.status is SimplexStatus.INFEASIBLE
+    assert len(initialization_steps) == 1
+    assert report.final_tableau is initialization_steps[-1].after
+
+
 def test_perform_pivot_does_not_require_the_entering_variable_to_be_a_simplex_candidate():
     x = var('x')
     lp_problem = problem(

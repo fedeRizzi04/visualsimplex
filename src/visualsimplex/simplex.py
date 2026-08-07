@@ -1,7 +1,7 @@
 from enum import Enum
 from itertools import chain
 from typing import Iterable
-from visualsimplex.initialization import BalinskiGomoryInitializer, InfeasibleProblemError, InitializationPivotStep, InitializationStrategy
+from visualsimplex.initialization import BalinskiGomoryInitializer, InitializationPivotStep, InitializationStatus, InitializationStrategy
 from visualsimplex.lp_problem import CanonicalFormLPProblem, LPProblem
 from visualsimplex.rules import EnteringVariableRule, LeavingVariableRule, bland_rule, minimum_ratio_rule
 from visualsimplex.steps import PivotStep
@@ -108,15 +108,14 @@ class SimplexAlgorithm:
         canonical_problem = problem.from_inequality_form_to_canonical_form()
         initial_tableau = Tableau(canonical_problem)
         current = initial_tableau
-        initialization_steps : tuple[InitializationPivotStep, ...] = ()
+        initialization_steps : Iterable[InitializationPivotStep] = ()
 
         if not current.is_feasible_basis():
-            try:
-                current = current.initialize(self._initialization_strategy)
-            except InfeasibleProblemError as error:
-                initialization_steps = tuple(self._initialization_strategy.steps)
-                return SimplexReport(problem, canonical_problem, initial_tableau, initialization_steps, (), SimplexStatus.INFEASIBLE, str(error))
-            initialization_steps = tuple(self._initialization_strategy.steps)
+            initialization = current.initialize(self._initialization_strategy)
+            initialization_steps = initialization.steps
+            if initialization.status is InitializationStatus.INFEASIBLE:
+                return SimplexReport(problem, canonical_problem, initial_tableau, initialization_steps, (), SimplexStatus.INFEASIBLE, initialization.termination_reason)
+            current = initialization.final_tableau
 
         optimization_steps : list[SimplexPivotStep] = []
         while not current.is_optimal_basis():

@@ -1,8 +1,9 @@
+from dataclasses import FrozenInstanceError
 from fractions import Fraction
 
 import pytest
 
-from visualsimplex.initialization import BalinskiGomoryInitializer, InfeasibleProblemError, InitializationPivotKind
+from visualsimplex.initialization import BalinskiGomoryInitializer, InitializationStatus
 from visualsimplex.tableau import Tableau, TableauRow
 from visualsimplex.value_objects import VarKind, Variable
 
@@ -31,17 +32,21 @@ def test_tableau_initialize_rejects_an_already_feasible_basis(mocker):
     strategy.run.assert_not_called()
 
 
-def test_tableau_initialize_propagates_the_infeasible_problem_error_from_the_strategy(mocker):
+def test_tableau_initialize_returns_the_result_produced_by_the_strategy(mocker):
     x, s = var("x"), var("s", VarKind.SLACK)
     tableau = make_tableau((x, s), (s,), (0, 0), (TableauRow((Fraction(1), Fraction(1)), Fraction(-1), s),))
-    expected_error = InfeasibleProblemError('infeasible problem')
+    expected_result = mocker.sentinel.initialization_result
     strategy = mocker.Mock()
-    strategy.run.side_effect = expected_error
+    strategy.run.return_value = expected_result
 
-    with pytest.raises(InfeasibleProblemError) as raised:
-        tableau.initialize(strategy)
+    assert tableau.initialize(strategy) is expected_result
 
-    assert raised.value is expected_error
+
+def test_balinski_gomory_initializer_configuration_is_immutable():
+    strategy = BalinskiGomoryInitializer()
+
+    with pytest.raises(FrozenInstanceError):
+        strategy.entering_rule = lambda candidates: next(iter(candidates)).var
 
 
 def test_balinski_gomory_optimizes_a_violated_constraint_until_it_becomes_feasible():
@@ -59,14 +64,16 @@ def test_balinski_gomory_optimizes_a_violated_constraint_until_it_becomes_feasib
     )
     strategy = BalinskiGomoryInitializer()
 
-    result = tableau.initialize(strategy)
+    initialization = tableau.initialize(strategy)
+    steps = tuple(initialization)
+    result = initialization.final_tableau
 
+    assert initialization.status is InitializationStatus.FEASIBLE
     assert result.is_feasible_basis()
     assert tuple(result.basic_variables) == (x1, x2, s3)
     assert result.get_value_for_basic_var(s3) == Fraction(8)
-    assert tuple((step.entering, step.leaving) for step in strategy.steps) == ((x1, s1), (x2, s2))
-    assert all(step.violated_row_basic_var == s3 for step in strategy.steps)
-    assert all(step.kind is InitializationPivotKind.AUXILIARY_OPTIMIZATION for step in strategy.steps)
+    assert tuple((step.entering, step.leaving) for step in steps) == ((x1, s1), (x2, s2))
+    assert all(step.violated_row_basic_var == s3 for step in steps)
 
 
 def test_balinski_gomory_uses_a_negative_pivot_when_the_auxiliary_problem_is_unbounded():
@@ -83,16 +90,17 @@ def test_balinski_gomory_uses_a_negative_pivot_when_the_auxiliary_problem_is_unb
     )
     strategy = BalinskiGomoryInitializer()
 
-    result = tableau.initialize(strategy)
+    initialization = tableau.initialize(strategy)
+    steps = tuple(initialization)
+    result = initialization.final_tableau
 
+    assert initialization.status is InitializationStatus.FEASIBLE
     assert result.is_feasible_basis()
     assert tuple(result.basic_variables) == (x, s1)
     assert result.get_value_for_basic_var(x) == Fraction(4)
-    steps = tuple(strategy.steps)
     assert len(steps) == 1
     step = steps[0]
     assert step.pivot == Fraction(-1)
-    assert step.kind is InitializationPivotKind.FEASIBILITY_REPAIR
 
 
 def test_balinski_gomory_stops_optimizing_a_constraint_as_soon_as_its_rhs_is_non_negative():
@@ -109,10 +117,12 @@ def test_balinski_gomory_stops_optimizing_a_constraint_as_soon_as_its_rhs_is_non
     )
     strategy = BalinskiGomoryInitializer()
 
-    result = tableau.initialize(strategy)
+    initialization = tableau.initialize(strategy)
+    steps = tuple(initialization)
+    result = initialization.final_tableau
 
     assert result.get_value_for_basic_var(s2) == Fraction(0)
-    assert len(tuple(strategy.steps)) == 1
+    assert len(steps) == 1
 
 
 def test_balinski_gomory_detects_an_infeasible_problem():
@@ -120,9 +130,12 @@ def test_balinski_gomory_detects_an_infeasible_problem():
     tableau = make_tableau((x, s), (s,), (0, 0), (TableauRow((Fraction(1), Fraction(1)), Fraction(-1), s),))
     strategy = BalinskiGomoryInitializer()
 
-    with pytest.raises(InfeasibleProblemError):
-        tableau.initialize(strategy)
-    assert tuple(strategy.steps) == ()
+    initialization = tableau.initialize(strategy)
+
+    assert initialization.status is InitializationStatus.INFEASIBLE
+    assert tuple(initialization) == ()
+    assert initialization.final_tableau is tableau
+    assert initialization.termination_reason
 
 
 def test_balinski_gomory_delegates_the_order_of_violated_constraints_to_the_given_rule():
@@ -143,8 +156,10 @@ def test_balinski_gomory_delegates_the_order_of_violated_constraints_to_the_give
 
     strategy = BalinskiGomoryInitializer(violated_constraint_rule=choose_last)
 
-    result = tableau.initialize(strategy)
+    initialization = tableau.initialize(strategy)
+    steps = tuple(initialization)
+    result = initialization.final_tableau
 
+    assert initialization.status is InitializationStatus.FEASIBLE
     assert result.is_feasible_basis()
-    assert tuple(step.violated_row_basic_var for step in strategy.steps) == (s2, s1)
-    assert all(step.kind is InitializationPivotKind.FEASIBILITY_REPAIR for step in strategy.steps)
+    assert tuple(step.violated_row_basic_var for step in steps) == (s2, s1)

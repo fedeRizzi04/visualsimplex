@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from visualsimplex.rules import EnteringCandidate, EnteringVariableRule, LeavingCandidate, LeavingVariableRule
 from visualsimplex.utils import get_basic_var, tableau_to_canonical_form_problem, update_row_coeffs_after_pivot
 if TYPE_CHECKING:
-    from visualsimplex.initialization import InitializationStrategy
+    from visualsimplex.initialization import InitializationResult, InitializationStrategy
 
 @dataclass(frozen=True)
 class TableauRow:
@@ -205,11 +205,11 @@ class Tableau:
     def to_canonical_form_problem(self) -> CanonicalFormLPProblem:
         return tableau_to_canonical_form_problem(self._variables, self._reduced_cost_coefficients, self._rows)
 
-    def initialize(self, strategy : InitializationStrategy) -> Tableau:
-        '''Initialize this tableau using a strategy that returns a feasible tableau or raises InfeasibleProblemError.'''
+    def initialize(self, strategy : InitializationStrategy) -> InitializationResult:
+        '''Return the result produced by an initialization strategy for this infeasible tableau.'''
         if self.is_feasible_basis():
             raise ValueError('cannot initialize a tableau whose basis is already feasible')
-        return strategy.run(self) # could raise InfeasibleProblemError
+        return strategy.run(self)
 
 
 
