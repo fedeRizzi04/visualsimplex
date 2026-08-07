@@ -117,7 +117,6 @@ def test_perform_pivot_does_not_require_the_entering_variable_to_be_a_simplex_ca
 
     step = SimplexAlgorithm().perform_pivot(tableau, x, leaving)
 
-    assert tuple(step.entering_candidates) == ()
     assert step.entering == x
     assert step.leaving == leaving
     assert step.pivot == Fraction(1)

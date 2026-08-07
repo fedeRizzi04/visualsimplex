@@ -1,10 +1,9 @@
-from dataclasses import dataclass, field
 from enum import Enum
 from itertools import chain
 from typing import Iterable
 from visualsimplex.initialization import BalinskiGomoryInitializer, InfeasibleProblemError, InitializationPivotStep, InitializationStrategy
 from visualsimplex.lp_problem import CanonicalFormLPProblem, LPProblem
-from visualsimplex.rules import EnteringCandidate, EnteringVariableRule, LeavingCandidate, LeavingVariableRule, bland_rule, minimum_ratio_rule
+from visualsimplex.rules import EnteringVariableRule, LeavingVariableRule, bland_rule, minimum_ratio_rule
 from visualsimplex.steps import PivotStep
 from visualsimplex.tableau import Tableau
 from visualsimplex.value_objects import Variable
@@ -18,29 +17,12 @@ class SimplexStatus(Enum):
     INFEASIBLE = 'infeasible'
 
 
-@dataclass(frozen=True)
 class SimplexPivotStep(PivotStep):
-    '''Description of one pivot performed during primal-simplex optimization.
-
-    The candidate collections describe the choices available before the pivot according to the primal-simplex
-    conditions. The selected variables need not belong to them when the step is produced through the permissive
-    SimplexAlgorithm.perform_pivot method.
-    '''
-
-    _entering_candidates : tuple[EnteringCandidate, ...] = field(repr=False)
-    _leaving_candidates : tuple[LeavingCandidate, ...] = field(repr=False)
+    '''Description of one pivot performed during primal-simplex optimization.'''
 
     @property
     def description(self) -> str:
         return 'primal-simplex pivot step'
-
-    @property
-    def entering_candidates(self) -> Iterable[EnteringCandidate]:
-        return iter(self._entering_candidates)
-
-    @property
-    def leaving_candidates(self) -> Iterable[LeavingCandidate]:
-        return iter(self._leaving_candidates)
 
 
 class SimplexReport:
@@ -151,9 +133,7 @@ class SimplexAlgorithm:
         after = tableau.pivot(entering, leaving)
         entering_index = tableau.get_var_index(entering)
         pivot = next(row.coefficients[entering_index] for row in tableau.rows if row.basic_var == leaving)
-        entering_candidates = tuple(EnteringCandidate(var, reduced_cost) for var, reduced_cost in tableau.reduced_costs if reduced_cost < 0)
-        leaving_candidates = tuple(LeavingCandidate(row.basic_var, row.coefficients[entering_index], row.rhs) for row in tableau.rows if row.rhs >= 0 and row.coefficients[entering_index] > 0)
-        return SimplexPivotStep(tableau, entering, leaving, pivot, after, entering_candidates, leaving_candidates)
+        return SimplexPivotStep(tableau, entering, leaving, pivot, after)
 
     @staticmethod
     def _last_tableau(initial_tableau : Tableau, steps : Iterable[InitializationPivotStep]) -> Tableau:
