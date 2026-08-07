@@ -18,6 +18,13 @@ class TableauRow:
         coefficients = "  ".join(f"{coefficient!s:>{width}}" for coefficient, width in zip(self.coefficients, coefficient_widths))
         return f"{self.rhs!s:>{rhs_width}} | {coefficients}"
 
+
+@dataclass(frozen=True)
+class LeavingVariableInfo:
+    leaving_var : Variable
+    pivot : Fraction
+    index_of_constraint : int
+
 class Tableau:
 
 
@@ -67,8 +74,21 @@ class Tableau:
     def objective_value(self) -> Fraction:
         return -self._objective_tableau_coeff
 
+    @property
+    def reduced_costs(self) -> Iterable[tuple[Variable, Fraction]]:
+        return iter(zip(self._variables, self._reduced_cost_coefficients))
+
+    @property
+    def rows(self) -> Iterable[TableauRow]:
+        return iter(self._rows)
+
+
+    def is_basic_variable(self, var : Variable) -> bool:
+        return var in self._basic_vars
+
+
     def get_value_for_basic_var(self, var : Variable) -> Fraction:
-        if var not in self._basic_vars:
+        if not self.is_basic_variable(var):
             raise ValueError(f'{var} is not a basic var in the following tableau: \n{self}')
         return next(r.rhs for r in self._rows if r.basic_var == var)
 
@@ -83,6 +103,22 @@ class Tableau:
         for var, reduced_cost in zip(self._variables, self._reduced_cost_coefficients):
             if reduced_cost < 0:
                 yield var
+
+    def leaving_variable(self, entering : Variable) -> LeavingVariableInfo:
+        '''given a candidate entering variable returns a LeavingVariableInfo object. It represent the leaving variable
+        from basis, the value of the pivot and the index of the constraint where the pivot is in the tableau (starting from 0)
+        '''
+        if entering not in self.candidate_entering_variables():
+            raise ValueError(f'{entering} is not a candidate entering variable in the following tableau:\n{self}')
+        column_index_var = self.get_var_index(entering)
+        eligible_rows = ((i, row) for i, row in enumerate(self._rows) if row.rhs >= 0 and row.coefficients[column_index_var] > 0) # rows that have a non-negative rhs and a positive pivot candidate
+        try:
+            # min on an empty iterable raises ValueError 
+            index_constraint, row = min(eligible_rows, key=lambda item: item[1].rhs / item[1].coefficients[column_index_var]) # minimum ratio test on elegible rows
+        except ValueError as e:
+            problem_status = ', the problem is unbounded!' if self.is_feasible_basis() else ''
+            raise ValueError(f'{entering} has a negative reduced cost but no eligible pivot{problem_status}') from e
+        return LeavingVariableInfo(row.basic_var, row.coefficients[column_index_var], index_constraint)
 
     def is_unbounded_problem(self) -> bool:
         '''returns whether the problem represented by this tableau is unbounded. A problem is unbounded

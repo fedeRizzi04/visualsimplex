@@ -4,7 +4,7 @@ import pytest
 
 from visualsimplex import Constraint, ConstraintSense, Expression, LPProblem, Objective, OptimizationSense, Term, VarKind, Variable
 from visualsimplex.lp_problem import CanonicalFormLPProblem
-from visualsimplex.tableau import Tableau, TableauRow, get_basic_var
+from visualsimplex.tableau import LeavingVariableInfo, Tableau, TableauRow, get_basic_var
 
 
 def var(symbol, kind=VarKind.ORIGINAL):
@@ -160,6 +160,68 @@ def test_candidate_entering_variables_returns_variables_with_negative_reduced_co
     tableau._reduced_cost_coefficients = (Fraction(-2), Fraction(0), Fraction(-1, 3), Fraction(0))
 
     assert tuple(tableau.candidate_entering_variables()) == (x1, x3)
+
+
+def test_leaving_variable_uses_the_minimum_ratio_and_ignores_non_positive_pivots():
+    x = var("x")
+    s1, s2, s3, s4 = (var(f"s{i}", VarKind.SLACK) for i in range(1, 5))
+    tableau = Tableau.__new__(Tableau)
+    tableau._basic_vars = frozenset((s1, s2, s3, s4))
+    tableau._variables = (x, s1, s2, s3, s4)
+    tableau._reduced_cost_coefficients = (Fraction(-1), Fraction(0), Fraction(0), Fraction(0), Fraction(0))
+    tableau._rows = (
+        TableauRow((Fraction(2), Fraction(1), Fraction(0), Fraction(0), Fraction(0)), Fraction(8), s1),
+        TableauRow((Fraction(1), Fraction(0), Fraction(1), Fraction(0), Fraction(0)), Fraction(3), s2),
+        TableauRow((Fraction(0), Fraction(0), Fraction(0), Fraction(1), Fraction(0)), Fraction(0), s3),
+        TableauRow((Fraction(-2), Fraction(0), Fraction(0), Fraction(0), Fraction(1)), Fraction(1), s4),
+    )
+
+    assert tableau.leaving_variable(x) == LeavingVariableInfo(s2, Fraction(1), 1)
+
+
+def test_leaving_variable_accepts_a_degenerate_pivot_and_breaks_ratio_ties_by_row_order():
+    x, s1, s2 = var("x"), var("s1", VarKind.SLACK), var("s2", VarKind.SLACK)
+    tableau = Tableau.__new__(Tableau)
+    tableau._basic_vars = frozenset((s1, s2))
+    tableau._variables = (x, s1, s2)
+    tableau._reduced_cost_coefficients = (Fraction(-1), Fraction(0), Fraction(0))
+    tableau._rows = (
+        TableauRow((Fraction(2), Fraction(1), Fraction(0)), Fraction(0), s1),
+        TableauRow((Fraction(1), Fraction(0), Fraction(1)), Fraction(0), s2),
+    )
+
+    assert tableau.leaving_variable(x) == LeavingVariableInfo(s1, Fraction(2), 0)
+
+
+def test_leaving_variable_ignores_negative_rhs_rows_without_requiring_a_feasible_basis():
+    x, s1, s2 = var("x"), var("s1", VarKind.SLACK), var("s2", VarKind.SLACK)
+    tableau = Tableau.__new__(Tableau)
+    tableau._basic_vars = frozenset((s1, s2))
+    tableau._variables = (x, s1, s2)
+    tableau._reduced_cost_coefficients = (Fraction(-1), Fraction(0), Fraction(0))
+    tableau._rows = (
+        TableauRow((Fraction(2), Fraction(1), Fraction(0)), Fraction(-4), s1),
+        TableauRow((Fraction(1), Fraction(0), Fraction(1)), Fraction(3), s2),
+    )
+
+    assert tableau.leaving_variable(x) == LeavingVariableInfo(s2, Fraction(1), 1)
+
+
+def test_leaving_variable_reports_unboundedness_only_for_a_feasible_basis():
+    x, s = var("x"), var("s", VarKind.SLACK)
+    tableau = Tableau.__new__(Tableau)
+    tableau._basic_vars = frozenset((s,))
+    tableau._variables = (x, s)
+    tableau._reduced_cost_coefficients = (Fraction(-1), Fraction(0))
+    tableau._rows = (TableauRow((Fraction(0), Fraction(1)), Fraction(1), s),)
+
+    with pytest.raises(ValueError, match="unbounded"):
+        tableau.leaving_variable(x)
+
+    tableau._rows = (TableauRow((Fraction(0), Fraction(1)), Fraction(-1), s),)
+    with pytest.raises(ValueError, match="no eligible pivot") as error:
+        tableau.leaving_variable(x)
+    assert "unbounded" not in str(error.value)
 
 
 def test_get_constraints_coefficient_returns_the_column_and_rejects_unknown_variables():
