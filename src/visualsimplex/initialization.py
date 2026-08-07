@@ -105,7 +105,7 @@ class BalinskiGomoryInitializer(InitializationStrategy):
                                  for row in current.rows if row.basic_var != violated_row_basic_var and row.rhs >= 0 and row.coefficients[entering_index] > 0)
             if candidates:
                 leaving = self.leaving_rule(candidates)
-            else:
+            else: # no leaving candidates, then the last possibility is to pivot on the same row
                 leaving = LeavingCandidate(violated_row_basic_var, violated_row.coefficients[entering_index], violated_row.rhs)
             after = current.pivot(entering, leaving.leaving_var)
             steps.append(InitializationPivotStep(current, entering, leaving.leaving_var, leaving.pivot, after, violated_row_basic_var))
