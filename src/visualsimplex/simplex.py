@@ -1,6 +1,6 @@
+from collections.abc import Iterable, Iterator, Sequence
 from enum import Enum
 from itertools import chain
-from typing import Iterable
 from visualsimplex.initialization import BalinskiGomoryInitializer, InitializationPivotStep, InitializationStatus, InitializationStrategy
 from visualsimplex.lp_problem import CanonicalFormLPProblem, LPProblem
 from visualsimplex.rules import EnteringVariableRule, LeavingVariableRule, bland_rule, minimum_ratio_rule
@@ -54,15 +54,15 @@ class SimplexReport:
         return self._initial_tableau
 
     @property
-    def initialization_steps(self) -> Iterable[InitializationPivotStep]:
-        return iter(self._initialization_steps)
+    def initialization_steps(self) -> Sequence[InitializationPivotStep]:
+        return self._initialization_steps
 
     @property
-    def optimization_steps(self) -> Iterable[SimplexPivotStep]:
-        return iter(self._optimization_steps)
+    def optimization_steps(self) -> Sequence[SimplexPivotStep]:
+        return self._optimization_steps
 
     @property
-    def steps(self) -> Iterable[PivotStep]:
+    def steps(self) -> Iterator[PivotStep]:
         return chain(self._initialization_steps, self._optimization_steps)
 
     @property
@@ -81,7 +81,7 @@ class SimplexReport:
     def termination_reason(self) -> str:
         return self._termination_reason
 
-    def __iter__(self) -> Iterable[PivotStep]:
+    def __iter__(self) -> Iterator[PivotStep]:
         return self.steps
 
     def __str__(self) -> str:
@@ -108,7 +108,7 @@ class SimplexAlgorithm:
         canonical_problem = problem.from_inequality_form_to_canonical_form()
         initial_tableau = Tableau(canonical_problem)
         current = initial_tableau
-        initialization_steps : Iterable[InitializationPivotStep] = ()
+        initialization_steps : Sequence[InitializationPivotStep] = ()
 
         if not current.is_feasible_basis():
             initialization = current.initialize(self._initialization_strategy)

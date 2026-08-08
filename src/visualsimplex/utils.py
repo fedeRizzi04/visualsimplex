@@ -1,7 +1,7 @@
 from __future__ import annotations
-from collections.abc import Set
+from collections.abc import Iterable, Iterator, Set
 from fractions import Fraction
-from typing import TYPE_CHECKING, Iterable
+from typing import TYPE_CHECKING
 from visualsimplex.value_objects import Constraint, ConstraintSense, Expression, Objective, OptimizationSense, Term, Variable
 
 if TYPE_CHECKING:
@@ -9,8 +9,8 @@ if TYPE_CHECKING:
     from visualsimplex.tableau import TableauRow
 
 
-def problem_variables(objective : Objective, constraints : Iterable[Constraint]) -> Iterable[Variable]:
-    '''returns all different variables in a problem (Varaible instances)'''
+def problem_variables(objective : Objective, constraints : Iterable[Constraint]) -> Iterator[Variable]:
+    '''returns all variables in a problem (Varaible instances)'''
     return (term.var for expression in (objective.expr, *(constraint.expr for constraint in constraints)) for term in expression)
 
 
@@ -28,7 +28,7 @@ def get_basic_var(expr : Expression, basic_vars : Set[Variable]) -> Variable:
     return next(iter(basic_vars_in_expr))
 
 
-def update_row_coeffs_after_pivot(row_coeffs : Iterable[Fraction], normalized_pivot_row_coeffs : Iterable[Fraction], non_pivot_row_pivot_column_coeff : Fraction) -> Iterable[Fraction]:
+def update_row_coeffs_after_pivot(row_coeffs : Iterable[Fraction], normalized_pivot_row_coeffs : Iterable[Fraction], non_pivot_row_pivot_column_coeff : Fraction) -> Iterator[Fraction]:
     '''Updates the coefficients of a non-pivot tableau row during a simplex pivot step.
 
     Given a row R, a normalized pivot row P and the coefficient a of R in the pivot column,

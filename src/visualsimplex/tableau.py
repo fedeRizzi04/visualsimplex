@@ -1,7 +1,8 @@
 from __future__ import annotations
+from collections.abc import Iterable, Iterator, Sequence
 from visualsimplex.value_objects import Variable, Expression, Constraint
 from visualsimplex.lp_problem import CanonicalFormLPProblem
-from typing import TYPE_CHECKING, Iterable
+from typing import TYPE_CHECKING
 from fractions import Fraction
 from dataclasses import dataclass
 from visualsimplex.rules import EnteringCandidate, EnteringVariableRule, LeavingCandidate, LeavingVariableRule
@@ -26,7 +27,7 @@ class Tableau:
 
 
     # Tuples for reduced costs and for constraint expressions must follow the variable ordering (self._variables is ordered in natural ordering variables). 
-    # Also the property variable must return an Iterable that produces variables accordingly to this ordering.
+    # Also the property variable must return a Sequence that produces variables accordingly to this ordering.
     # For example, if the variable ordering is (x1, x2, x3, sl1, sl2), then the reduced cost
     # tuple (2, 0, 1, 0, -1) represent a reduced cost of 2 for x1, of 0 for x2, etc...
     # The same must be true even for constraint tuples
@@ -41,46 +42,46 @@ class Tableau:
         constraints = iter(lp_problem.problem)
         self._rows : tuple[TableauRow] = tuple(self._build_tableau_rows(constraints))
 
-    def _build_reduced_costs_coefficients(self, objective_expr : Expression) -> Iterable[Fraction]:
+    def _build_reduced_costs_coefficients(self, objective_expr : Expression) -> Iterator[Fraction]:
         return (objective_expr.coefficient_of(var) for var in self._variables)
 
-    def _build_tableau_rows(self, constraints : Iterable[Constraint]) -> Iterable[TableauRow]:
-        rows = list() # set is more efficients but I need insertion order :(
+    def _build_tableau_rows(self, constraints : Iterable[Constraint]) -> Sequence[TableauRow]:
+        rows : list[TableauRow] = []
         for c in constraints: 
             expr : Expression = c.expr
             rhs : Fraction = c.rhs
             coefficients : tuple[Fraction] = tuple(expr.coefficient_of(v) for v in self._variables)
             basic_var : Variable = get_basic_var(expr, self._basic_vars)
             rows.append(TableauRow(coefficients, rhs, basic_var))
-        return iter(rows)
+        return tuple(rows)
 
 
     @property
-    def variables(self) -> Iterable[Variable]:
+    def variables(self) -> Sequence[Variable]:
         '''returns the variables of the LP problem represented by this tableau. The order of the variables
         returned by this method defines the order of the reduced costs and constraint coefficients of this tableau
         '''
-        return iter(self._variables)
+        return self._variables
     
     @property
-    def basic_variables(self) -> Iterable[Variable]:
-        return iter(sorted(self._basic_vars))
+    def basic_variables(self) -> Sequence[Variable]:
+        return tuple(sorted(self._basic_vars))
 
     @property
-    def non_basic_variables(self) -> Iterable[Variable]:
-        return iter(sorted(frozenset(self._variables) - self._basic_vars)) 
+    def non_basic_variables(self) -> Sequence[Variable]:
+        return tuple(sorted(frozenset(self._variables) - self._basic_vars))
 
     @property
     def objective_value(self) -> Fraction:
         return -self._objective_tableau_coeff
 
     @property
-    def reduced_costs(self) -> Iterable[tuple[Variable, Fraction]]:
-        return iter(zip(self._variables, self._reduced_cost_coefficients))
+    def reduced_costs(self) -> Iterator[tuple[Variable, Fraction]]:
+        return zip(self._variables, self._reduced_cost_coefficients)
 
     @property
-    def rows(self) -> Iterable[TableauRow]:
-        return iter(self._rows)
+    def rows(self) -> Sequence[TableauRow]:
+        return self._rows
 
 
     def is_basic_variable(self, var : Variable) -> bool:
@@ -102,7 +103,7 @@ class Tableau:
         if not self.is_feasible_basis():
             raise ValueError('primal-simplex rules require a feasible basis')
 
-    def entering_candidate_variables(self) -> Iterable[Variable]:
+    def entering_candidate_variables(self) -> Iterator[Variable]:
         '''Return the variables with negative reduced costs in a feasible tableau.'''
         self._require_feasible_basis()
         for var, reduced_cost in zip(self._variables, self._reduced_cost_coefficients):
@@ -139,11 +140,11 @@ class Tableau:
         all candidates pivot are negative (or equal to 0). In other words there is almost one candidate entering variables
         where all candidates pivot are not elegible. An unbounded problem is feasible'''
         self._require_feasible_basis()
-        constraints_coeffs : Iterable[Iterable[Fraction]]= (self.get_constraints_coefficient(var) for var in self.entering_candidate_variables())
+        constraints_coeffs : Iterator[Iterator[Fraction]] = (self.get_constraints_coefficient(var) for var in self.entering_candidate_variables())
         return any(all(c <= Fraction(0) for c in coeffs) for coeffs in constraints_coeffs)
     
 
-    def get_constraints_coefficient(self, var : Variable) -> Iterable[Fraction]: 
+    def get_constraints_coefficient(self, var : Variable) -> Iterator[Fraction]:
         '''given a variable returns the coefficients of that variable for every constraint in the tableau'''
         if var not in self._variables:
             raise ValueError(f'{var} is not part of this tableau variables, that are: {self._variables}')

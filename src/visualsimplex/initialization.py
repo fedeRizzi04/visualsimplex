@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
+from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
 from enum import Enum
 from fractions import Fraction
-from typing import Iterable
 from visualsimplex.rules import EnteringCandidate, EnteringVariableRule, LeavingCandidate, LeavingVariableRule, ViolatedConstraintCandidate, ViolatedConstraintRule, bland_rule, first_violated_constraint_rule, minimum_ratio_rule
 from visualsimplex.steps import PivotStep
 from visualsimplex.tableau import Tableau
@@ -37,8 +37,8 @@ class InitializationResult:
         return self._initial_tableau
 
     @property
-    def steps(self) -> Iterable[InitializationPivotStep]:
-        return iter(self._steps)
+    def steps(self) -> Sequence[InitializationPivotStep]:
+        return self._steps
 
     @property
     def final_tableau(self) -> Tableau:
@@ -52,8 +52,8 @@ class InitializationResult:
     def termination_reason(self) -> str:
         return self._termination_reason
 
-    def __iter__(self) -> Iterable[InitializationPivotStep]:
-        return self.steps
+    def __iter__(self) -> Iterator[InitializationPivotStep]:
+        return iter(self._steps)
 
 
 class InitializationStrategy(ABC):

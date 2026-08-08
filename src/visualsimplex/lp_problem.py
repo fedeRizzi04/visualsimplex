@@ -1,5 +1,5 @@
 from __future__ import annotations
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
 from visualsimplex.value_objects import Constraint, ConstraintSense, Objective, OptimizationSense, VarDomain, Variable, VarKind
 from visualsimplex.utils import problem_variables
@@ -84,14 +84,14 @@ class LPProblem:
         non_basic_variables = sf_variables - basic_variables
         return CanonicalFormLPProblem(standard_form_problem, basic_variables, non_basic_variables)
 
-    def get_variables(self) -> Iterable[Variable]:
+    def get_variables(self) -> Iterator[Variable]:
         return problem_variables(self._objective, self._constraints)
 
     @property
     def objective(self) -> Objective:
         return self._objective
 
-    def __iter__(self) -> Iterable[Constraint]:
+    def __iter__(self) -> Iterator[Constraint]:
         return iter(self._constraints) # Constraint is immutable
 
     def __str__(self) -> str:
