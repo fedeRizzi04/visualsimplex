@@ -1,4 +1,5 @@
-from collections.abc import Iterable, Iterator, Sequence
+from collections.abc import Iterator
+from dataclasses import dataclass
 from enum import Enum
 from itertools import chain
 from visualsimplex.initialization import BalinskiGomoryInitializer, InitializationPivotStep, InitializationStatus, InitializationStrategy
@@ -25,6 +26,7 @@ class SimplexPivotStep(PivotStep):
         return 'primal-simplex pivot step'
 
 
+@dataclass(frozen=True)
 class SimplexReport:
     '''Structured report of initialization, optimization and the final mathematical outcome.
 
@@ -32,54 +34,29 @@ class SimplexReport:
     their execution order. The two phases remain separately available for clients that present them differently.
     '''
 
-    def __init__(self, original_problem : LPProblem, canonical_problem : CanonicalFormLPProblem, initial_tableau : Tableau, initialization_steps : Iterable[InitializationPivotStep], optimization_steps : Iterable[SimplexPivotStep], status : SimplexStatus, termination_reason : str):
-        self._original_problem = original_problem
-        self._canonical_problem = canonical_problem
-        self._initial_tableau = initial_tableau
-        self._initialization_steps = tuple(initialization_steps)
-        self._optimization_steps = tuple(optimization_steps)
-        self._status = status
-        self._termination_reason = termination_reason
+    original_problem : LPProblem
+    canonical_problem : CanonicalFormLPProblem
+    initial_tableau : Tableau
+    initialization_steps : tuple[InitializationPivotStep, ...]
+    optimization_steps : tuple[SimplexPivotStep, ...]
+    status : SimplexStatus
+    termination_reason : str
 
-    @property
-    def original_problem(self) -> LPProblem:
-        return self._original_problem
-
-    @property
-    def canonical_problem(self) -> CanonicalFormLPProblem:
-        return self._canonical_problem
-
-    @property
-    def initial_tableau(self) -> Tableau:
-        return self._initial_tableau
-
-    @property
-    def initialization_steps(self) -> Sequence[InitializationPivotStep]:
-        return self._initialization_steps
-
-    @property
-    def optimization_steps(self) -> Sequence[SimplexPivotStep]:
-        return self._optimization_steps
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'initialization_steps', tuple(self.initialization_steps))
+        object.__setattr__(self, 'optimization_steps', tuple(self.optimization_steps))
 
     @property
     def steps(self) -> Iterator[PivotStep]:
-        return chain(self._initialization_steps, self._optimization_steps)
+        return chain(self.initialization_steps, self.optimization_steps)
 
     @property
     def final_tableau(self) -> Tableau:
-        if self._optimization_steps:
-            return self._optimization_steps[-1].after
-        if self._initialization_steps:
-            return self._initialization_steps[-1].after
+        if self.optimization_steps:
+            return self.optimization_steps[-1].after
+        if self.initialization_steps:
+            return self.initialization_steps[-1].after
         return self.initial_tableau
-
-    @property
-    def status(self) -> SimplexStatus:
-        return self._status
-
-    @property
-    def termination_reason(self) -> str:
-        return self._termination_reason
 
     def __iter__(self) -> Iterator[PivotStep]:
         return self.steps
@@ -108,7 +85,7 @@ class SimplexAlgorithm:
         canonical_problem = problem.from_inequality_form_to_canonical_form()
         initial_tableau = Tableau(canonical_problem)
         current = initial_tableau
-        initialization_steps : Sequence[InitializationPivotStep] = ()
+        initialization_steps : tuple[InitializationPivotStep, ...] = ()
 
         if not current.is_feasible_basis():
             initialization = current.initialize(self._initialization_strategy)
