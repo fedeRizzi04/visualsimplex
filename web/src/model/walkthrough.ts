@@ -15,6 +15,8 @@ export interface Highlight {
   candidateRows: ReadonlySet<number>
   /** Row being repaired during initialization, absent during optimization. */
   violatedRow: number | null
+  /** Columns of the variables that make the tableau unbounded, present only on the tableau a run stopped at. */
+  unboundedColumns?: ReadonlySet<number>
 }
 
 export function lastCursor(report: Report): number {
@@ -38,6 +40,19 @@ export function highlightFor(tableau: Tableau, step: Step): Highlight {
     leavingRow: rowOf(tableau, step.leaving),
     candidateRows: new Set(step.leaving_candidates.map((candidate) => rowOf(tableau, candidate.var))),
     violatedRow: step.violated_row_basic_var ? rowOf(tableau, step.violated_row_basic_var) : null,
+  }
+}
+
+/** Highlight for the tableau an unbounded run stopped at: the columns of `report.unbounded_directions`, with no
+ * entering/leaving pivot to show since the run never performed one on this tableau. */
+export function unboundedHighlight(tableau: Tableau, report: Report): Highlight {
+  return {
+    enteringColumn: -1,
+    candidateColumns: new Set(),
+    leavingRow: -1,
+    candidateRows: new Set(),
+    violatedRow: null,
+    unboundedColumns: new Set(report.unbounded_directions.map((variable) => columnOf(tableau, variable))),
   }
 }
 

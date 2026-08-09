@@ -80,6 +80,19 @@ def test_encode_report_carries_only_the_resulting_tableau_of_each_step():
     assert encoded['steps'][-1]['after'] == encoded['final_tableau']
 
 
+def test_encode_report_carries_the_unbounded_directions_only_when_the_problem_is_unbounded():
+    lp_problem = LPProblem.from_coefficients("max", (1,), [((-1,), "<=", 0)])
+
+    encoded = encode_report(SimplexAlgorithm().solve_inequality_form(lp_problem))
+
+    assert encoded['status'] == 'unbounded'
+    assert [variable['symbol'] for variable in encoded['unbounded_directions']] == ['x1']
+
+    optimal = encode_report(SimplexAlgorithm().solve_inequality_form(problem()))
+    assert optimal['status'] == 'optimal'
+    assert optimal['unbounded_directions'] == []
+
+
 def test_encode_report_records_the_candidates_of_every_step():
     encoded = encode_report(SimplexAlgorithm().solve_inequality_form(problem()))
     step = encoded['steps'][0]

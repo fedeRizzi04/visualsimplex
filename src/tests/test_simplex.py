@@ -125,6 +125,7 @@ def test_simplex_algorithm_reports_an_unbounded_problem():
     assert tuple(report.steps) == ()
     assert report.final_tableau is report.initial_tableau
     assert not report.final_tableau.is_optimal_basis()
+    assert tuple(report.unbounded_directions) == (x,)
 
 
 def test_simplex_algorithm_reports_an_infeasible_problem_and_uses_the_initial_tableau_when_no_pivots_were_performed():

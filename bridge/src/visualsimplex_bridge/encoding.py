@@ -110,4 +110,5 @@ def encode_report(report : SimplexReport) -> Json:
         'final_tableau': encode_tableau(report.final_tableau, opt_sense),
         'status': report.status.value,
         'termination_reason': report.termination_reason,
+        'unbounded_directions': [encode_variable(variable) for variable in report.unbounded_directions],
     }

@@ -119,13 +119,18 @@ class Tableau:
         if not self.is_feasible_basis():
             raise ValueError('primal-simplex rules require a feasible basis')
 
-    def entering_candidates(self) -> tuple[EnteringCandidate, ...]:
-        '''Return the candidates an entering rule chooses among during a primal-simplex step on a feasible tableau.'''
+    def entering_candidates(self) -> Sequence[EnteringCandidate]:
+        '''Return the variables that could enter the basis on the next pivot step, paired with their reduced cost.
+
+        A variable is eligible to enter when its reduced cost is negative: increasing it from 0 would improve the
+        objective. These are exactly the candidates an entering rule (e.g. Bland's or Dantzig's) chooses among; the
+        tableau is optimal when this is empty. Requires a feasible basis.
+        '''
         self._require_feasible_basis()
         return tuple(EnteringCandidate(var, reduced_cost) for var, reduced_cost in self.reduced_costs if reduced_cost < 0)
 
     def entering_candidate_variables(self) -> Iterator[Variable]:
-        '''Return the variables with negative reduced costs in a feasible tableau.'''
+        '''Return just the variables from entering_candidates(), dropping their reduced cost.'''
         return (candidate.var for candidate in self.entering_candidates())
 
     def entering_variable(self, rule : EnteringVariableRule) -> Variable:
@@ -136,7 +141,7 @@ class Tableau:
             raise ValueError('the entering-variable rule returned a variable that is not eligible')
         return entering
 
-    def leaving_candidates(self, entering : Variable) -> tuple[LeavingCandidate, ...]:
+    def leaving_candidates(self, entering : Variable) -> Sequence[LeavingCandidate]:
         '''Return the candidates a leaving rule chooses among for a fixed entering variable on a feasible tableau.'''
         self._require_feasible_basis()
         entering_index = self.get_var_index(entering)
@@ -157,15 +162,22 @@ class Tableau:
             raise ValueError('the leaving-variable rule returned a candidate that is not eligible')
         return selected
 
-    def is_unbounded_problem(self) -> bool:
-        '''returns whether the problem represented by this tableau is unbounded. A problem is unbounded
-        if exists a tableau where there are possible entering variables but no feasible pivot, meaning that
-        all candidates pivot are negative (or equal to 0). In other words there is almost one candidate entering variables
-        where all candidates pivot are not elegible. An unbounded problem is feasible'''
+    def unbounded_directions(self) -> Sequence[Variable]:
+        '''Return the variables that can be improved without bound for the objective in this feasible tableau.
+
+        A variable qualifies when it is an entering candidate (negative reduced cost, so increasing it from 0
+        improves the objective) whose column has no positive coefficient in any row: no ratio test ever produces
+        a leaving variable for it, so nothing stops it from growing to infinity while every row stays feasible.
+        The tableau, and therefore the LP it represents, is unbounded exactly when this is non-empty.
+        '''
         self._require_feasible_basis()
-        constraints_coeffs : Iterator[Iterator[Fraction]] = (self.get_constraints_coefficient(var) for var in self.entering_candidate_variables())
-        return any(all(c <= Fraction(0) for c in coeffs) for coeffs in constraints_coeffs)
-    
+        var_constraint_coeffs : Iterator[tuple[Variable, Iterator[Fraction]]] = ((var, self.get_constraints_coefficient(var)) for var in self.entering_candidate_variables())
+        return tuple(var for var, coeffs in var_constraint_coeffs if all(c <= Fraction(0) for c in coeffs))
+
+    def is_unbounded_problem(self) -> bool:
+        '''returns whether the problem represented by this tableau is unbounded, i.e. whether unbounded_directions()
+        is non-empty. An unbounded problem is feasible: this only asks about tableaus with a feasible basis.'''
+        return bool(self.unbounded_directions())
 
     def get_constraints_coefficient(self, var : Variable) -> Iterator[Fraction]:
         '''given a variable returns the coefficients of that variable for every constraint in the tableau'''
@@ -234,8 +246,6 @@ class Tableau:
         if self.is_feasible_basis():
             raise ValueError('cannot initialize a tableau whose basis is already feasible')
         return strategy.run(self)
-
-
 
     def __str__(self) -> str:
         objective_coefficient = self.objective_tableau_value

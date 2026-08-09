@@ -1,5 +1,5 @@
 import type { ProblemSpec, Report, Rules } from '../model/types'
-import { highlightFor, lastCursor, pendingStep, tableauAt } from '../model/walkthrough'
+import { highlightFor, lastCursor, pendingStep, tableauAt, unboundedHighlight } from '../model/walkthrough'
 import type { SimplexEngine } from '../runtime/engine'
 import { el, replaceChildren } from './dom'
 import { problemForm } from './problemForm'
@@ -76,6 +76,9 @@ function walkthrough(report: Report, cursor: number, move: (delta: number) => vo
   const tableau = tableauAt(report, cursor)
   const step = pendingStep(report, cursor)
   const total = lastCursor(report)
+  // Past the last step there is nothing pending to highlight — unless that is where an unbounded run stopped, in
+  // which case the columns that made it unbounded take the place of a pivot that was never performed.
+  const highlight = step ? highlightFor(tableau, step) : report.status === 'unbounded' ? unboundedHighlight(tableau, report) : null
 
   return [
     el('section', { class: 'panel tableau-panel' }, [
@@ -83,7 +86,7 @@ function walkthrough(report: Report, cursor: number, move: (delta: number) => vo
         el('h2', { text: cursor === 0 ? 'Initial tableau' : `Tableau after step ${cursor}` }),
         navigation(cursor, total, move),
       ]),
-      tableauView(tableau, step ? highlightFor(tableau, step) : null, report.sense),
+      tableauView(tableau, highlight, report.sense),
       basisSummary(tableau, report.sense),
     ]),
     step ? stepPanel(step, cursor + 1, total) : outcomePanel(report),

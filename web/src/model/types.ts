@@ -91,6 +91,9 @@ export interface Report {
   final_tableau: Tableau
   status: Status
   termination_reason: string
+  /** The variables that can grow without bound in `final_tableau`: negative reduced cost, no positive coefficient
+   * in any row. Only non-empty when `status` is 'unbounded'. */
+  unbounded_directions: Variable[]
 }
 
 export interface Rule {

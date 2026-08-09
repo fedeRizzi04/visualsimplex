@@ -9,7 +9,8 @@ import { classes, el } from './dom'
  *
  * Highlighting works on three levels: eligible alternatives are tinted, the selected row and column are outlined, and
  * only their intersection — the pivot — is filled. A student should see at a glance what could have been chosen and
- * what actually was.
+ * what actually was. On the tableau where an unbounded run stopped there is no pivot to show instead: the columns of
+ * `unboundedColumns` are marked with their own (danger-toned) style, distinct from a merely eligible alternative.
  */
 export function tableauView(tableau: Tableau, highlight: Highlight | null, sense: OptimizationSense): HTMLElement {
   return el('div', { class: 'tableau-scroll' }, [
@@ -92,6 +93,7 @@ function columnClasses(column: number, highlight: Highlight | null): string {
   return classes(
     highlight?.enteringColumn === column && 'is-entering',
     highlight?.candidateColumns.has(column) && 'is-candidate-column',
+    highlight?.unboundedColumns?.has(column) && 'is-unbounded-column',
   )
 }
 

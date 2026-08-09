@@ -374,6 +374,13 @@ button.primary {
   font-weight: 700;
 }
 
+.tableau .is-unbounded-column {
+  background: var(--danger-soft);
+  box-shadow: inset 2px 0 0 var(--danger), inset -2px 0 0 var(--danger);
+  color: var(--danger);
+  font-weight: 700;
+}
+
 .tableau tr.is-violated > .value {
   box-shadow: inset 3px 0 0 var(--danger);
 }

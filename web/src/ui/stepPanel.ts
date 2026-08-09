@@ -92,5 +92,12 @@ export function outcomePanel(report: Report): HTMLElement {
           el('strong', { text: report.final_tableau.original_objective_value.text }),
         ])
       : null,
+    report.status === 'unbounded'
+      ? el('p', {}, [
+          report.unbounded_directions.length === 1 ? 'Unbounded column: ' : 'Unbounded columns: ',
+          el('strong', { text: report.unbounded_directions.map((variable) => variable.symbol).join(', ') }),
+          ' — highlighted above, in red.',
+        ])
+      : null,
   ])
 }

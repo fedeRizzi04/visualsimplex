@@ -1,4 +1,4 @@
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from enum import Enum
 from itertools import chain
@@ -32,6 +32,8 @@ class SimplexReport:
 
     Iterating over the report yields initialization pivot steps followed by primal-simplex pivot steps, preserving
     their execution order. The two phases remain separately available for clients that present them differently.
+    unbounded_directions is Tableau.unbounded_directions() read off the tableau where the run stopped, i.e. the
+    variables at fault; it is empty for every status other than UNBOUNDED.
     '''
 
     original_problem : LPProblem
@@ -41,6 +43,7 @@ class SimplexReport:
     optimization_steps : tuple[SimplexPivotStep, ...]
     status : SimplexStatus
     termination_reason : str
+    unbounded_directions : Sequence[Variable] = ()
 
     def __post_init__(self) -> None:
         object.__setattr__(self, 'initialization_steps', tuple(self.initialization_steps))
@@ -96,8 +99,9 @@ class SimplexAlgorithm:
 
         optimization_steps : list[SimplexPivotStep] = []
         while not current.is_optimal_basis():
-            if current.is_unbounded_problem():
-                return SimplexReport(problem, canonical_problem, initial_tableau, initialization_steps, optimization_steps, SimplexStatus.UNBOUNDED, 'an improving variable has no eligible leaving variable')
+            unbounded_directions = current.unbounded_directions()
+            if unbounded_directions:
+                return SimplexReport(problem, canonical_problem, initial_tableau, initialization_steps, optimization_steps, SimplexStatus.UNBOUNDED, 'an improving variable has no eligible leaving variable', unbounded_directions)
             entering_candidates = current.entering_candidates()
             entering = current.entering_variable(self._entering_rule)
             leaving_candidates = current.leaving_candidates(entering)

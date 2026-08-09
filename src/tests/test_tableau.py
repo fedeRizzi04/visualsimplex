@@ -275,6 +275,26 @@ def test_primal_simplex_variable_selection_rejects_an_infeasible_basis():
         tableau.entering_variable(bland_rule)
     with pytest.raises(ValueError, match="require a feasible basis"):
         tableau.leaving_variable(x, minimum_ratio_rule)
+    with pytest.raises(ValueError, match="require a feasible basis"):
+        tableau.unbounded_directions()
+
+
+def test_unbounded_directions_returns_only_the_entering_variables_that_can_grow_forever():
+    x0, x1, x2 = var("x0"), var("x1"), var("x2")
+    s0, s1 = var("s0", VarKind.SLACK), var("s1", VarKind.SLACK)
+    tableau = Tableau.__new__(Tableau)
+    tableau._basic_vars = frozenset((s0, s1))
+    tableau._variables = (x0, x1, x2)
+    tableau._reduced_cost_coefficients = (Fraction(-1), Fraction(-2), Fraction(0))
+    tableau._rows = (
+        TableauRow((Fraction(1), Fraction(0), Fraction(1)), Fraction(1), s0),
+        TableauRow((Fraction(0), Fraction(-1), Fraction(0)), Fraction(2), s1),
+    )
+
+    # x0 and x1 are both entering candidates (negative reduced cost), but only x1's column has no positive
+    # coefficient in any row: x0 still has an eligible pivot in row s0, so it is left out.
+    assert tableau.unbounded_directions() == (x1,)
+    assert tableau.is_unbounded_problem() is True
 
 
 def test_leaving_variable_reports_unboundedness_for_a_feasible_basis():
