@@ -83,7 +83,7 @@ function walkthrough(report: Report, cursor: number, move: (delta: number) => vo
         el('h2', { text: cursor === 0 ? 'Initial tableau' : `Tableau after step ${cursor}` }),
         navigation(cursor, total, move),
       ]),
-      tableauView(tableau, step ? highlightFor(tableau, step) : null),
+      tableauView(tableau, step ? highlightFor(tableau, step) : null, report.sense),
       basisSummary(tableau, report.sense),
     ]),
     step ? stepPanel(step, cursor + 1, total) : outcomePanel(report),

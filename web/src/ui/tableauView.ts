@@ -11,12 +11,12 @@ import { classes, el } from './dom'
  * only their intersection — the pivot — is filled. A student should see at a glance what could have been chosen and
  * what actually was.
  */
-export function tableauView(tableau: Tableau, highlight: Highlight | null): HTMLElement {
+export function tableauView(tableau: Tableau, highlight: Highlight | null, sense: OptimizationSense): HTMLElement {
   return el('div', { class: 'tableau-scroll' }, [
     el('table', { class: 'tableau' }, [
       el('thead', {}, [headerRow(tableau)]),
       el('tbody', {}, [
-        objectiveRow(tableau, highlight),
+        objectiveRow(tableau, highlight, sense),
         ...tableau.rows.map((_, index) => constraintRow(tableau, index, highlight)),
       ]),
     ]),
@@ -25,10 +25,11 @@ export function tableauView(tableau: Tableau, highlight: Highlight | null): HTML
 
 function headerRow(tableau: Tableau): HTMLElement {
   return el('tr', {}, [
-    // One cell labels the whole left column, which holds two different quantities: the objective value on the row
-    // right below, and the right-hand sides on the rows under the rule.
+    // One cell labels the whole left column, which holds two different quantities: the tableau's objective value on
+    // the row right below (always the "-w" convention, see objectiveCellTitle), and the right-hand sides on the rows
+    // under the rule.
     el('th', { class: 'value-header' }, [
-      el('span', { class: 'label-z', text: 'z' }),
+      el('span', { class: 'label-z', text: '-w' }),
       el('span', { class: 'label-b', text: 'b' }),
     ]),
     ...tableau.variables.map((variable) =>
@@ -42,12 +43,12 @@ function headerRow(tableau: Tableau): HTMLElement {
   ])
 }
 
-function objectiveRow(tableau: Tableau, highlight: Highlight | null): HTMLElement {
+function objectiveRow(tableau: Tableau, highlight: Highlight | null, sense: OptimizationSense): HTMLElement {
   return el('tr', { class: 'objective' }, [
     el('td', {
       class: 'value',
-      text: tableau.objective_value.text,
-      title: 'Value in canonical form, always a minimization — the one consistent with the reduced costs on this row',
+      text: tableau.objective_tableau_value.text,
+      title: objectiveCellTitle(sense),
     }),
     ...tableau.reduced_costs.map((cost, column) =>
       el('td', { class: classes('coefficient', columnClasses(column, highlight)), text: cost.text }),
@@ -81,6 +82,12 @@ function constraintRow(tableau: Tableau, rowIndex: number, highlight: Highlight 
   ])
 }
 
+function objectiveCellTitle(sense: OptimizationSense): string {
+  return sense === 'max'
+    ? 'Value literally held by the tableau (the "-w" convention): w = -this value, and since the problem maximizes, z = this value.'
+    : 'Value literally held by the tableau (the "-w" convention): w = -this value.'
+}
+
 function columnClasses(column: number, highlight: Highlight | null): string {
   return classes(
     highlight?.enteringColumn === column && 'is-entering',
@@ -91,15 +98,23 @@ function columnClasses(column: number, highlight: Highlight | null): string {
 /**
  * The current vertex in words: which variables are in the basis, at what value, and what the solution is worth.
  *
- * The objective is reported in the sense the user wrote, not the canonical one, so a maximization does not appear to
- * have a negative optimum.
+ * For a maximization, w (the canonical minimum the tableau works with) and z (what the user actually asked to
+ * maximize) are shown as separate lines with their relation spelled out, rather than silently reporting only z —
+ * that would leave w's value, printed in the tableau above, unexplained.
  */
 export function basisSummary(tableau: Tableau, sense: OptimizationSense): HTMLElement {
   return el('dl', { class: 'summary' }, [
     entry('Basis', tableau.basis.map(({ var: variable, value }) => `${variable.symbol} = ${value.text}`).join(',  ') || '—'),
-    entry(`Objective value (${sense})`, tableau.original_objective_value.text, 'objective-value'),
+    ...objectiveEntries(tableau, sense),
     entry('Basis status', basisState(tableau)),
   ])
+}
+
+function objectiveEntries(tableau: Tableau, sense: OptimizationSense): HTMLElement[] {
+  if (sense === 'max') {
+    return [entry('w', tableau.objective_value.text), entry('z = -w', tableau.original_objective_value.text, 'objective-value')]
+  }
+  return [entry('Objective value (min)', tableau.original_objective_value.text, 'objective-value')]
 }
 
 function entry(term: string, description: string, className?: string): HTMLElement {

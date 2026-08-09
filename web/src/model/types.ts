@@ -39,7 +39,10 @@ export interface Tableau {
   reduced_costs: Fraction[]
   rows: TableauRow[]
   basis: BasisEntry[]
-  /** The value the tableau holds. Always a minimization: it is the one consistent with the reduced costs. */
+  /** The value literally held in the tableau's top-left cell (the "-w" convention): -objective_value, always the
+   * one consistent with the reduced costs shown alongside it. This is what a tableau rendering should display. */
+  objective_tableau_value: Fraction
+  /** The resolved canonical-form (minimization) value: -objective_tableau_value. */
   objective_value: Fraction
   /** The same solution measured in the problem the user wrote — the opposite sign for a maximization. */
   original_objective_value: Fraction

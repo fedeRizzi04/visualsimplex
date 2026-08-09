@@ -52,6 +52,7 @@ def test_tableau_builds_coefficients_from_mocked_problem_dependencies(mocker):
     assert tableau._reduced_cost_coefficients == (Fraction(-2), Fraction(0))
     assert tableau._rows == (TableauRow((Fraction(3), Fraction(1)), Fraction(6), s),)
     assert tableau.objective_value == Fraction(-7, 2)
+    assert tableau.objective_tableau_value == Fraction(7, 2)
     assert tableau.get_value_for_basic_var(s) == Fraction(6)
     with pytest.raises(ValueError, match="not a basic var"):
         tableau.get_value_for_basic_var(x)
@@ -323,6 +324,8 @@ def test_pivot_returns_the_transformed_tableau_without_mutating_the_original():
 
     assert result._basic_vars == frozenset((x1, s1))
     assert result._objective_tableau_coeff == Fraction(15, 2)
+    assert result.objective_tableau_value == Fraction(15, 2)
+    assert result.objective_value == Fraction(-15, 2)
     assert result._reduced_cost_coefficients == (Fraction(0), Fraction(-1, 2), Fraction(0), Fraction(3, 2))
     assert result._rows == (
         TableauRow((Fraction(0), Fraction(1, 2), Fraction(1), Fraction(-1, 2)), Fraction(3, 2), s1),

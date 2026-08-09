@@ -13,6 +13,12 @@
     <header class="site-header">
       <h1>VisualSimplex</h1>
       <p>Balinski-Gomory initialization and the optimization phase, one pivot at a time.</p>
+      <p>
+        Give the problem as "≤"/"≥" inequality constraints. It will be rewritten in canonical form before any pivoting starts: every "≤" becomes an
+        equality with an added slack variable, every "≥" is first flipped to "≤" and then gets its own slack variable. The objective is put
+        in minimization form: a "max z" you type becomes "min w = -z" (a "min" you type is already w). Every tableau reports -w
+        in its top-left cell.
+      </p>
     </header>
     <main id="app"></main>
     <footer class="site-footer">

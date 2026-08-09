@@ -55,17 +55,21 @@ def test_a_maximization_reports_its_value_in_the_sense_the_user_wrote():
     encoded = encode_report(SimplexAlgorithm().solve_inequality_form(problem()))
 
     assert encoded['sense'] == 'max'
+    assert encoded['final_tableau']['objective_tableau_value']['text'] == '12'
     assert encoded['final_tableau']['objective_value']['text'] == '-12'
     assert encoded['final_tableau']['original_objective_value']['text'] == '12'
 
 
 def test_a_minimization_reports_the_same_value_in_both_senses():
+    '''For a native minimization the tableau cell still holds -objective_value, it just no longer coincides with the
+    value in the original sense the way it does for a converted maximization.'''
     lp_problem = LPProblem.from_coefficients("min", (1,), [((1,), ">=", 2), ((1,), "<=", 5)])
 
     encoded = encode_report(SimplexAlgorithm().solve_inequality_form(lp_problem))
 
     assert encoded['sense'] == 'min'
     assert encoded['final_tableau']['original_objective_value'] == encoded['final_tableau']['objective_value']
+    assert encoded['final_tableau']['objective_tableau_value']['numerator'] == -encoded['final_tableau']['objective_value']['numerator']
 
 
 def test_encode_report_carries_only_the_resulting_tableau_of_each_step():

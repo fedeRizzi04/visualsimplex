@@ -73,7 +73,23 @@ class Tableau:
 
     @property
     def objective_value(self) -> Fraction:
+        '''The resolved value of the canonical-form (minimization) objective at the current basis: -objective_tableau_value.
+
+        This is a convenience reading, not the value literally stored in the tableau's top-left cell — see objective_tableau_value.
+        '''
         return -self._objective_tableau_coeff
+
+    @property
+    def objective_tableau_value(self) -> Fraction:
+        '''The value literally held by the top-left cell of the tableau (the "-w" convention).
+
+        The objective row is updated by the exact same row-reduction as every other row, with the reduced costs
+        playing the part of that row's coefficients: that is what pivot() applies to _objective_tableau_coeff. Reading
+        that invariant back at any basis gives objective_tableau_value == -objective_value, always: this cell never holds the
+        canonical minimum w itself, only its negation. If the original problem was a maximization (so w = -z by
+        construction), this negation cancels the one from the sense conversion and objective_tableau_value == z instead.
+        '''
+        return self._objective_tableau_coeff
 
     @property
     def reduced_costs(self) -> Iterator[tuple[Variable, Fraction]]:
@@ -222,7 +238,7 @@ class Tableau:
 
 
     def __str__(self) -> str:
-        objective_coefficient = self._objective_tableau_coeff
+        objective_coefficient = self.objective_tableau_value
         rhs_width = max(len(str(value)) for value in (objective_coefficient, *(row.rhs for row in self._rows)))
         widths = tuple(max(len(str(var)), *(len(str(row.coefficients[i])) for row in self._rows), len(str(self._reduced_cost_coefficients[i]))) for i, var in enumerate(self._variables))
         header = f"{'':>{rhs_width}} | " + "  ".join(f"{var!s:>{width}}" for var, width in zip(self._variables, widths))

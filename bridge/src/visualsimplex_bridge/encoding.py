@@ -45,11 +45,14 @@ def encode_row(row : TableauRow) -> Json:
 def encode_tableau(tableau : Tableau, opt_sense : OptimizationSense) -> Json:
     '''Encode a tableau. Coefficient lists follow the order of `variables`, exactly as they do in the tableau itself.
 
-    Two objective values are reported because they answer two different questions. `objective_value` is the quantity
-    the tableau actually holds, always a minimization since that is the canonical form the algorithm works in, and it
-    is the one consistent with the reduced costs shown alongside it. `original_objective_value` is the same solution
-    measured in the problem the user wrote: for a maximization the two differ by a sign, and showing the canonical one
-    would tell a student their maximum is negative.
+    Three objective values are reported because they answer three different questions. `objective_tableau_value` is
+    the quantity literally held in the tableau's top-left cell, updated by the same row-reduction as every other row
+    — by that "-w" convention it is never the canonical minimum itself, only its negation, and it is what a tableau
+    rendering should display next to the reduced costs it is consistent with. `objective_value` is the resolved
+    canonical-form (minimization) value, i.e. -objective_tableau_value. `original_objective_value` is the same
+    solution measured in the problem the user wrote: for a maximization it differs from objective_value by a sign
+    (and, incidentally, equals objective_tableau_value), and showing the canonical one would tell a student their
+    maximum is negative.
     '''
     basic_variables = frozenset(tableau.basic_variables)
     return {
@@ -58,6 +61,7 @@ def encode_tableau(tableau : Tableau, opt_sense : OptimizationSense) -> Json:
         'rows': [encode_row(row) for row in tableau.rows],
         'basis': [{'var': encode_variable(variable), 'value': encode_fraction(tableau.get_value_for_basic_var(variable))}
                   for variable in tableau.basic_variables],
+        'objective_tableau_value': encode_fraction(tableau.objective_tableau_value),
         'objective_value': encode_fraction(tableau.objective_value),
         'original_objective_value': encode_fraction(_in_original_sense(tableau.objective_value, opt_sense)),
         'is_feasible': tableau.is_feasible_basis(),
