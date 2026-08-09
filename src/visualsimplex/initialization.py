@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from collections.abc import Iterable, Iterator, Sequence
+from collections.abc import Iterator
 from dataclasses import dataclass
 from enum import Enum
 from fractions import Fraction
@@ -23,37 +23,24 @@ class InitializationPivotStep(PivotStep):
         return 'initialization pivot step'
 
 
+@dataclass(frozen=True)
 class InitializationResult:
     '''Result of an initialization strategy, including every pivot and its mathematical outcome.'''
 
-    def __init__(self, initial_tableau : Tableau, steps : Iterable[InitializationPivotStep], status : InitializationStatus, termination_reason : str):
-        self._initial_tableau = initial_tableau
-        self._steps = tuple(steps)
-        self._status = status
-        self._termination_reason = termination_reason
+    initial_tableau : Tableau
+    steps : tuple[InitializationPivotStep, ...]
+    status : InitializationStatus
+    termination_reason : str
 
-    @property
-    def initial_tableau(self) -> Tableau:
-        return self._initial_tableau
-
-    @property
-    def steps(self) -> Sequence[InitializationPivotStep]:
-        return self._steps
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'steps', tuple(self.steps))
 
     @property
     def final_tableau(self) -> Tableau:
-        return self._steps[-1].after if self._steps else self.initial_tableau
-
-    @property
-    def status(self) -> InitializationStatus:
-        return self._status
-
-    @property
-    def termination_reason(self) -> str:
-        return self._termination_reason
+        return self.steps[-1].after if self.steps else self.initial_tableau
 
     def __iter__(self) -> Iterator[InitializationPivotStep]:
-        return iter(self._steps)
+        return iter(self.steps)
 
 
 class InitializationStrategy(ABC):
