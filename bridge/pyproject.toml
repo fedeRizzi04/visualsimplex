@@ -1,0 +1,20 @@
+[project]
+name = "visualsimplex-bridge"
+version = "0.1.0"
+description = "JSON adapter exposing visualsimplex to the VisualSimplex web app"
+readme = "README.md"
+authors = [
+    { name = "Federico Rizzi", email = "federicoandrearizzi@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = ["visualsimplex"]
+# PyPI rejects any distribution carrying a "Private ::" classifier, so this is an enforced block
+# and not merely a note: the bridge is built into a wheel for the browser, never published.
+classifiers = ["Private :: Do Not Upload"]
+
+[build-system]
+requires = ["uv_build>=0.11.28,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.uv.sources]
+visualsimplex = { workspace = true }

@@ -2,6 +2,12 @@ version = 1
 revision = 3
 requires-python = ">=3.12"
 
+[manifest]
+members = [
+    "visualsimplex",
+    "visualsimplex-bridge",
+]
+
 [[package]]
 name = "colorama"
 version = "0.4.6"
@@ -84,6 +90,7 @@ source = { editable = "." }
 dev = [
     { name = "pytest" },
     { name = "pytest-mock" },
+    { name = "visualsimplex-bridge" },
 ]
 
 [package.metadata]
@@ -92,4 +99,16 @@ dev = [
 dev = [
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "pytest-mock", specifier = ">=3.15.1" },
+    { name = "visualsimplex-bridge", editable = "bridge" },
 ]
+
+[[package]]
+name = "visualsimplex-bridge"
+version = "0.1.0"
+source = { editable = "bridge" }
+dependencies = [
+    { name = "visualsimplex" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "visualsimplex", editable = "." }]

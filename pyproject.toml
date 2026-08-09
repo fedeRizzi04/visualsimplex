@@ -1,7 +1,7 @@
 [project]
 name = "visualsimplex"
 version = "0.1.0"
-description = "Add your description here"
+description = "Visualize the pivot steps of the simplex algorithm on linear programming problems"
 readme = "README.md"
 authors = [
     { name = "Federico Rizzi", email = "federicoandrearizzi@gmail.com" }
@@ -17,4 +17,13 @@ build-backend = "uv_build"
 dev = [
     "pytest>=9.1.1",
     "pytest-mock>=3.15.1",
+    "visualsimplex-bridge",
 ]
+
+# This package is also the workspace root: `bridge` is a sibling member that depends on it.
+# The web app is not a Python package and therefore is not a member.
+[tool.uv.workspace]
+members = ["bridge"]
+
+[tool.uv.sources]
+visualsimplex-bridge = { workspace = true }
