@@ -1,5 +1,5 @@
 from fractions import Fraction
-from visualsimplex import LPProblem, SimplexAlgorithm, Tableau, VarKind, Variable
+from visualsimplex import LPProblem, OptimizationSense, SimplexAlgorithm, Tableau, VarKind, Variable
 from visualsimplex.rules import EnteringCandidate, LeavingCandidate
 from visualsimplex_bridge.encoding import encode_entering_candidate, encode_fraction, encode_leaving_candidate, encode_report, encode_tableau, encode_variable
 
@@ -31,7 +31,7 @@ def test_encode_candidates_carry_the_numbers_a_client_shows_next_to_each_option(
 def test_encode_tableau_aligns_every_coefficient_list_with_the_variable_order():
     tableau = Tableau(problem().from_inequality_form_to_canonical_form())
 
-    encoded = encode_tableau(tableau)
+    encoded = encode_tableau(tableau, OptimizationSense.MAXIMIZE)
 
     assert [variable['symbol'] for variable in encoded['variables']] == [str(variable) for variable in tableau.variables]
     assert len(encoded['reduced_costs']) == len(encoded['variables'])
@@ -48,6 +48,24 @@ def test_encode_report_lists_initialization_steps_before_optimization_steps():
     assert [step['phase'] for step in encoded['steps']] == ['initialization', 'optimization']
     assert encoded['status'] == 'optimal'
     assert encoded['termination_reason']
+
+
+def test_a_maximization_reports_its_value_in_the_sense_the_user_wrote():
+    '''The canonical form minimizes, so the tableau of a max problem holds the opposite of the value the user expects.'''
+    encoded = encode_report(SimplexAlgorithm().solve_inequality_form(problem()))
+
+    assert encoded['sense'] == 'max'
+    assert encoded['final_tableau']['objective_value']['text'] == '-12'
+    assert encoded['final_tableau']['original_objective_value']['text'] == '12'
+
+
+def test_a_minimization_reports_the_same_value_in_both_senses():
+    lp_problem = LPProblem.from_coefficients("min", (1,), [((1,), ">=", 2), ((1,), "<=", 5)])
+
+    encoded = encode_report(SimplexAlgorithm().solve_inequality_form(lp_problem))
+
+    assert encoded['sense'] == 'min'
+    assert encoded['final_tableau']['original_objective_value'] == encoded['final_tableau']['objective_value']
 
 
 def test_encode_report_carries_only_the_resulting_tableau_of_each_step():

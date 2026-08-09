@@ -1,0 +1,531 @@
+/* Palette. Light is the base; only the tokens change in dark, so every rule below is written once. */
+:root {
+  --bg: #f7f7f5;
+  --surface: #ffffff;
+  --border: #dedcd6;
+  --text: #1c1b19;
+  --text-muted: #6b6862;
+
+  --entering: #2f6f4f;
+  --entering-soft: #e4f0e9;
+  --leaving: #8a4b1f;
+  --leaving-soft: #f6e9dd;
+  --pivot: #1f4f8a;
+  --pivot-soft: #dbe7f5;
+  --danger: #9a2c2c;
+  --danger-soft: #f6e2e2;
+
+  --radius: 8px;
+  --gap: 1rem;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #17181a;
+    --surface: #1f2124;
+    --border: #34373b;
+    --text: #ecebe8;
+    --text-muted: #9d9a94;
+
+    --entering: #7fc9a2;
+    --entering-soft: #23372e;
+    --leaving: #e0a274;
+    --leaving-soft: #3a2c21;
+    --pivot: #86b6ec;
+    --pivot-soft: #22303f;
+    --danger: #e79191;
+    --danger-soft: #3a2525;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0 var(--gap) 3rem;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.site-header,
+.site-footer,
+#app {
+  max-width: 1080px;
+  margin-inline: auto;
+}
+
+.site-header {
+  padding: 2rem 0 1rem;
+}
+
+.site-header h1 {
+  margin: 0;
+  font-size: 1.6rem;
+  letter-spacing: -0.01em;
+}
+
+.site-header p,
+.site-footer p {
+  margin: 0.35rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.site-footer {
+  margin-top: 2rem;
+}
+
+/* One column: the editor spans the full width so a wide problem grows sideways inside its own scroller
+   instead of being squeezed into a sidebar, and the walkthrough follows underneath it. */
+#app,
+.results {
+  display: grid;
+  gap: var(--gap);
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+}
+
+/* Panels */
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  min-width: 0;
+}
+
+.panel h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.panel h3 {
+  margin: 0 0 0.4rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.panel-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.note {
+  margin: 0.5rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.placeholder {
+  padding: 2rem 1rem;
+  text-align: center;
+}
+
+.error {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+}
+
+/* Controls */
+
+button {
+  font: inherit;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  padding: 0.4rem 0.8rem;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--text-muted);
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+button.primary {
+  width: 100%;
+  margin-top: 1rem;
+  padding: 0.6rem;
+  background: var(--pivot);
+  border-color: var(--pivot);
+  color: var(--surface);
+  font-weight: 600;
+}
+
+button.icon {
+  padding: 0 0.35rem;
+  margin-left: 0.25rem;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  line-height: 1;
+}
+
+input,
+select {
+  font: inherit;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--bg);
+  color: var(--text);
+  min-width: 0;
+}
+
+input.coefficient {
+  width: 4.5rem;
+  font-family: var(--mono);
+  text-align: right;
+}
+
+input.symbol {
+  width: 4.5rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.field {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.rule-pickers {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+button.primary {
+  justify-self: start;
+  min-width: 12rem;
+}
+
+.form-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+/* Problem editor */
+
+.grid-scroll,
+.tableau-scroll {
+  overflow-x: auto;
+  margin-inline: -0.25rem;
+  padding-inline: 0.25rem;
+}
+
+.problem-grid {
+  border-collapse: collapse;
+}
+
+.problem-grid th,
+.problem-grid td {
+  padding: 0.2rem;
+  text-align: center;
+  font-weight: 400;
+}
+
+.problem-grid .label {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.problem-grid .objective-row th {
+  white-space: nowrap;
+}
+
+/* Tableau */
+
+/* Blackboard shape: only two rules, one vertical after the value column and one horizontal under the objective
+   row. No cell grid — the highlights carry the structure instead. */
+
+.tableau {
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.tableau th,
+.tableau td {
+  padding: 0.3rem 0.75rem;
+  text-align: right;
+  white-space: nowrap;
+  border: 0;
+}
+
+.tableau thead th {
+  padding-bottom: 0.45rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* The vertical rule: right edge of the value column. */
+.tableau .value,
+.tableau .value-header {
+  border-right: 2px solid var(--text);
+  text-align: right;
+  font-weight: 600;
+}
+
+/* The horizontal rule: bottom edge of the objective row. */
+.tableau tr.objective > td {
+  border-bottom: 2px solid var(--text);
+  padding-bottom: 0.4rem;
+}
+
+.tableau tbody tr:first-of-type + tr > td,
+.tableau tbody tr:first-of-type + tr > th {
+  padding-top: 0.4rem;
+}
+
+/* One header cell labels both quantities stacked in the left column. */
+.tableau .value-header {
+  display: table-cell;
+  line-height: 1.15;
+}
+
+.tableau .label-z,
+.tableau .label-b {
+  display: block;
+  font-family: var(--mono);
+}
+
+.tableau .label-z {
+  color: var(--text);
+  font-style: italic;
+}
+
+.tableau .label-b {
+  color: var(--text-muted);
+  font-size: 0.8em;
+}
+
+.tableau .basis,
+.tableau .basis-header {
+  border-left: 1px solid var(--border);
+  text-align: left;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.tableau .kind-slack,
+.tableau .kind-surplus {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.tableau thead th.variable {
+  color: var(--text);
+}
+
+/* Three levels of emphasis: eligible, selected, pivot. */
+
+.tableau .is-candidate-column {
+  background: color-mix(in srgb, var(--entering-soft) 55%, transparent);
+}
+
+.tableau tr.is-candidate-row > td.coefficient {
+  background: color-mix(in srgb, var(--leaving-soft) 55%, transparent);
+}
+
+.tableau .is-entering {
+  background: var(--entering-soft);
+  box-shadow: inset 2px 0 0 var(--entering), inset -2px 0 0 var(--entering);
+  color: var(--entering);
+  font-weight: 700;
+}
+
+.tableau tr.is-leaving > td,
+.tableau tr.is-leaving > th {
+  background: var(--leaving-soft);
+  box-shadow: inset 0 2px 0 var(--leaving), inset 0 -2px 0 var(--leaving);
+  color: var(--leaving);
+  font-weight: 700;
+}
+
+.tableau td.is-pivot {
+  background: var(--pivot);
+  color: var(--surface);
+  box-shadow: none;
+  font-weight: 700;
+}
+
+.tableau tr.is-violated > .value {
+  box-shadow: inset 3px 0 0 var(--danger);
+}
+
+.tableau tr.is-infeasible > .value {
+  color: var(--danger);
+}
+
+/* Basis summary */
+
+.summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  margin: 0.75rem 0 0;
+}
+
+.summary div {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.summary dt {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.summary dd {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 0.9rem;
+}
+
+.summary .objective-value {
+  font-weight: 700;
+}
+
+/* Steps */
+
+.phase {
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: var(--pivot-soft);
+  color: var(--pivot);
+}
+
+.phase-initialization {
+  background: var(--leaving-soft);
+  color: var(--leaving);
+}
+
+.counter {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.candidate-columns {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  align-items: start;
+}
+
+.candidate-table {
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  width: 100%;
+}
+
+.candidate-table th,
+.candidate-table td {
+  border-bottom: 1px solid var(--border);
+  padding: 0.3rem 0.5rem;
+  text-align: right;
+}
+
+.candidate-table th:first-child,
+.candidate-table td:first-child {
+  text-align: left;
+}
+
+.candidate-table thead th {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+
+.candidate-table tr.is-chosen {
+  background: var(--pivot-soft);
+  color: var(--pivot);
+  font-weight: 700;
+}
+
+.outcome {
+  margin: 0.9rem 0 0;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.95rem;
+}
+
+.outcome-panel.status-optimal {
+  border-color: var(--entering);
+}
+
+.outcome-panel.status-unbounded,
+.outcome-panel.status-infeasible {
+  border-color: var(--danger);
+}
+
+.navigation {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+/* Boot */
+
+.boot {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 1rem;
+  color: var(--text-muted);
+}
+
+.spinner {
+  width: 1.1rem;
+  height: 1.1rem;
+  border: 2px solid var(--border);
+  border-top-color: var(--pivot);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+  }
+}

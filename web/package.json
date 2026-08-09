@@ -1,0 +1,18 @@
+{
+  "name": "visualsimplex-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Web app that walks through the pivot steps of the simplex algorithm",
+  "scripts": {
+    "wheels": "node scripts/build-wheels.mjs",
+    "dev": "npm run wheels && vite",
+    "typecheck": "tsc --noEmit",
+    "build": "npm run wheels && npm run typecheck && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "vite": "^6.0.5"
+  }
+}
