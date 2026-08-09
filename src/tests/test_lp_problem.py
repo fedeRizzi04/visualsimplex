@@ -2,7 +2,7 @@ from fractions import Fraction
 
 import pytest
 
-from visualsimplex import CanonicalFormLPProblem, Constraint, ConstraintSense, Expression, LPProblem, Objective, OptimizationSense, Term, VarDomain, VarKind, Variable
+from visualsimplex import CanonicalFormLPProblem, Constraint, ConstraintSense, Expression, LPProblem, LPProblemBuilder, Objective, OptimizationSense, Term, VarDomain, VarKind, Variable
 
 
 def variable(symbol, domain=VarDomain.NON_NEGATIVE):
@@ -257,3 +257,67 @@ def test_canonical_form_requires_basic_columns_to_form_the_identity_matrix(const
 
     with pytest.raises(ValueError, match="columns must"):
         make_canonical_problem(constraints=constraints, basic_vars=basic_vars)
+
+
+def test_builder_builds_problem_with_named_variables_mixed_domains_and_string_senses():
+    problem = (
+        LPProblem.builder("max")
+        .add_variable("x", 3)
+        .add_variable("y", 2, VarDomain.FREE)
+        .add_constraint((1, 1), "<=", 4)
+        .add_constraint((1, 3), "<=", 6)
+        .build()
+    )
+
+    assert str(problem) == (
+        "maximize z = 3x + 2y\n"
+        "s.t.\n"
+        "x + y <= 4\n"
+        "x + 3y <= 6\n"
+        "x >= 0\n"
+        "y free"
+    )
+
+
+def test_builder_converts_float_coefficients_to_exact_fractions_instead_of_binary_approximations():
+    problem = LPProblemBuilder("min").add_variable("x", 0.1).add_constraint((1,), "<=", 0.3).build()
+
+    assert problem.objective.expr.coefficient_of(variable("x")) == Fraction(1, 10)
+    assert next(iter(problem)).rhs == Fraction(3, 10)
+
+
+def test_builder_add_variable_rejects_duplicate_symbol():
+    builder = LPProblemBuilder("min").add_variable("x", 1)
+
+    with pytest.raises(ValueError, match="already been declared"):
+        builder.add_variable("x", 2)
+
+
+def test_builder_add_constraint_rejects_wrong_number_of_coefficients():
+    builder = LPProblemBuilder("min").add_variable("x", 1)
+
+    with pytest.raises(ValueError, match="expected 1 coefficients"):
+        builder.add_constraint((1, 2), "<=", 3)
+
+
+def test_builder_build_rejects_a_problem_with_no_variables():
+    with pytest.raises(ValueError, match="at least one variable"):
+        LPProblemBuilder("min").build()
+
+
+def test_from_coefficients_auto_names_non_negative_variables_and_accepts_plain_tuples_as_constraints():
+    problem = LPProblem.from_coefficients("max", (3, 2), [((1, 1), "<=", 4), ((1, 3), "<=", 6)])
+
+    assert str(problem) == (
+        "maximize z = 3x1 + 2x2\n"
+        "s.t.\n"
+        "x1 + x2 <= 4\n"
+        "x1 + 3x2 <= 6\n"
+        "x1, x2 >= 0"
+    )
+
+
+def test_from_coefficients_supports_a_custom_variable_prefix():
+    problem = LPProblem.from_coefficients("min", (1, 1), [((1, 0), ">=", 1)], var_prefix="y")
+
+    assert {v.symbol for v in problem.get_variables()} == {"y1", "y2"}

@@ -1,5 +1,5 @@
 from visualsimplex.value_objects import Constraint, ConstraintSense, Expression, Objective, OptimizationSense, Term, VarKind, VarDomain, Variable
-from visualsimplex.lp_problem import CanonicalFormLPProblem, LPProblem
+from visualsimplex.lp_problem import CanonicalFormLPProblem, CoefficientType, ConstraintRow, LPProblem, LPProblemBuilder
 from visualsimplex.tableau import Tableau, TableauRow
 from visualsimplex.rules import EnteringCandidate, EnteringVariableRule, LeavingCandidate, LeavingVariableRule, ViolatedConstraintCandidate, ViolatedConstraintRule, bland_rule, dantzig_rule, first_violated_constraint_rule, minimum_ratio_rule
 from visualsimplex.steps import PivotStep
@@ -17,7 +17,10 @@ __all__ = [
     "VarDomain",
     "Variable",
     "CanonicalFormLPProblem",
+    "CoefficientType",
+    "ConstraintRow",
     "LPProblem",
+    "LPProblemBuilder",
     "Tableau",
     "TableauRow", 
     "EnteringCandidate",
