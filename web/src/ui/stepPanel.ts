@@ -96,7 +96,7 @@ export function outcomePanel(report: Report): HTMLElement {
       ? el('p', {}, [
           report.unbounded_directions.length === 1 ? 'Unbounded column: ' : 'Unbounded columns: ',
           el('strong', { text: report.unbounded_directions.map((variable) => variable.symbol).join(', ') }),
-          ' — highlighted above, in red.',
+          ', highlighted above in red.',
         ])
       : null,
   ])

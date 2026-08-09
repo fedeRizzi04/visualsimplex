@@ -2,7 +2,7 @@
 
 > VisualSimplex is an early-stage educational project under development. Its API and features may change frequently, and its results may be incomplete or incorrect. Always verify them independently before relying on them.
 
-VisualSimplex was created to help students understand the simplex algorithm by showing how a solution evolves one pivot at a time, instead of presenting only the final result. The long-term goal is to provide a Python library for exploring and visualizing every step of the algorithm. The library is not yet published on PyPI.
+VisualSimplex has been created to help students understand the simplex algorithm by showing how a solution evolves one pivot at a time, instead of presenting only the final result. The long-term goal is to provide a Python library for exploring and visualizing every step of the algorithm. The library is not yet published on PyPI.
 
 The current version supports feasible-basis initialization with the Balinski–Gomory method and the optimization phase of the primal simplex method. Entering and leaving variables are selected through configurable rules chosen from those currently implemented.
 
