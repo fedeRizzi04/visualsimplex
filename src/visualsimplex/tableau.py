@@ -103,29 +103,36 @@ class Tableau:
         if not self.is_feasible_basis():
             raise ValueError('primal-simplex rules require a feasible basis')
 
+    def entering_candidates(self) -> tuple[EnteringCandidate, ...]:
+        '''Return the candidates an entering rule chooses among during a primal-simplex step on a feasible tableau.'''
+        self._require_feasible_basis()
+        return tuple(EnteringCandidate(var, reduced_cost) for var, reduced_cost in self.reduced_costs if reduced_cost < 0)
+
     def entering_candidate_variables(self) -> Iterator[Variable]:
         '''Return the variables with negative reduced costs in a feasible tableau.'''
-        self._require_feasible_basis()
-        for var, reduced_cost in zip(self._variables, self._reduced_cost_coefficients):
-            if reduced_cost < 0:
-                yield var
+        return (candidate.var for candidate in self.entering_candidates())
 
     def entering_variable(self, rule : EnteringVariableRule) -> Variable:
         '''Choose an entering variable for a primal-simplex step on a feasible tableau.'''
-        self._require_feasible_basis()
-        candidates = tuple(EnteringCandidate(var, reduced_cost) for var, reduced_cost in self.reduced_costs if reduced_cost < 0)
+        candidates = self.entering_candidates()
         entering = rule(candidates)
         if entering not in (candidate.var for candidate in candidates):
             raise ValueError('the entering-variable rule returned a variable that is not eligible')
         return entering
+
+    def leaving_candidates(self, entering : Variable) -> tuple[LeavingCandidate, ...]:
+        '''Return the candidates a leaving rule chooses among for a fixed entering variable on a feasible tableau.'''
+        self._require_feasible_basis()
+        entering_index = self.get_var_index(entering)
+        return tuple(LeavingCandidate(row.basic_var, row.coefficients[entering_index], row.rhs)
+                     for row in self._rows if row.rhs >= 0 and row.coefficients[entering_index] > 0)
 
     def leaving_variable(self, entering : Variable, rule : LeavingVariableRule) -> LeavingCandidate:
         '''Choose a leaving variable that preserves feasibility during a primal-simplex step.'''
         self._require_feasible_basis()
         if entering not in self.entering_candidate_variables():
             raise ValueError(f'{entering} is not a candidate entering variable in the following tableau:\n{self}')
-        column_index_var = self.get_var_index(entering)
-        candidates = tuple(LeavingCandidate(row.basic_var, row.coefficients[column_index_var], row.rhs) for row in self._rows if row.rhs >= 0 and row.coefficients[column_index_var] > 0)
+        candidates = self.leaving_candidates(entering)
         if not candidates:
             raise ValueError(f'{entering} has a negative reduced cost but no eligible pivot, the problem is unbounded!')
 

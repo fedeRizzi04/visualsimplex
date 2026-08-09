@@ -3,7 +3,7 @@ from enum import Enum
 from itertools import chain
 from visualsimplex.initialization import BalinskiGomoryInitializer, InitializationPivotStep, InitializationStatus, InitializationStrategy
 from visualsimplex.lp_problem import CanonicalFormLPProblem, LPProblem
-from visualsimplex.rules import EnteringVariableRule, LeavingVariableRule, bland_rule, minimum_ratio_rule
+from visualsimplex.rules import EnteringCandidate, EnteringVariableRule, LeavingCandidate, LeavingVariableRule, bland_rule, minimum_ratio_rule
 from visualsimplex.steps import PivotStep
 from visualsimplex.tableau import Tableau
 from visualsimplex.value_objects import Variable
@@ -121,17 +121,23 @@ class SimplexAlgorithm:
         while not current.is_optimal_basis():
             if current.is_unbounded_problem():
                 return SimplexReport(problem, canonical_problem, initial_tableau, initialization_steps, optimization_steps, SimplexStatus.UNBOUNDED, 'an improving variable has no eligible leaving variable')
+            entering_candidates = current.entering_candidates()
             entering = current.entering_variable(self._entering_rule)
+            leaving_candidates = current.leaving_candidates(entering)
             leaving = current.leaving_variable(entering, self._leaving_rule)
-            step = self.perform_pivot(current, entering, leaving.leaving_var)
+            step = self.perform_pivot(current, entering, leaving.var, entering_candidates=entering_candidates, leaving_candidates=leaving_candidates)
             optimization_steps.append(step)
             current = step.after
 
         return SimplexReport(problem, canonical_problem, initial_tableau, initialization_steps, optimization_steps, SimplexStatus.OPTIMAL, 'an optimal feasible basis has been reached')
 
-    def perform_pivot(self, tableau : Tableau, entering : Variable, leaving : Variable) -> SimplexPivotStep:
-        '''Perform and describe any algebraically valid pivot without requiring the selection rules to choose it.'''
+    def perform_pivot(self, tableau : Tableau, entering : Variable, leaving : Variable, *, entering_candidates : tuple[EnteringCandidate, ...] = (), leaving_candidates : tuple[LeavingCandidate, ...] = ()) -> SimplexPivotStep:
+        '''Perform and describe any algebraically valid pivot without requiring the selection rules to choose it.
+
+        The candidate tuples describe the alternatives the pivot was chosen among and default to empty, which is the
+        honest record for a pivot performed directly: no rule selected it, so it competed against nothing.
+        '''
         after = tableau.pivot(entering, leaving)
         entering_index = tableau.get_var_index(entering)
         pivot = next(row.coefficients[entering_index] for row in tableau.rows if row.basic_var == leaving)
-        return SimplexPivotStep(tableau, entering, leaving, pivot, after)
+        return SimplexPivotStep(tableau, entering_candidates, entering, leaving_candidates, leaving, pivot, after)

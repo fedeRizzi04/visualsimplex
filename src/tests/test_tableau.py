@@ -4,7 +4,7 @@ import pytest
 
 from visualsimplex import Constraint, ConstraintSense, Expression, LPProblem, Objective, OptimizationSense, Term, VarKind, Variable
 from visualsimplex.lp_problem import CanonicalFormLPProblem
-from visualsimplex.rules import LeavingCandidate, bland_rule, dantzig_rule, minimum_ratio_rule
+from visualsimplex.rules import EnteringCandidate, LeavingCandidate, bland_rule, dantzig_rule, minimum_ratio_rule
 from visualsimplex.tableau import Tableau, TableauRow, get_basic_var
 
 
@@ -166,6 +166,35 @@ def test_entering_candidate_variables_returns_variables_with_negative_reduced_co
     tableau._rows = (TableauRow((Fraction(0), Fraction(0), Fraction(0), Fraction(1)), Fraction(0), s),)
 
     assert tuple(tableau.entering_candidate_variables()) == (x1, x3)
+
+
+def test_entering_candidates_pair_every_eligible_variable_with_its_reduced_cost():
+    x1, x2, x3, s = var("x1"), var("x2"), var("x3"), var("s", VarKind.SLACK)
+    tableau = Tableau.__new__(Tableau)
+    tableau._basic_vars = frozenset((s,))
+    tableau._variables = (x1, x2, x3, s)
+    tableau._reduced_cost_coefficients = (Fraction(-2), Fraction(0), Fraction(-1, 3), Fraction(0))
+    tableau._rows = (TableauRow((Fraction(0), Fraction(0), Fraction(0), Fraction(1)), Fraction(0), s),)
+
+    assert tableau.entering_candidates() == (EnteringCandidate(x1, Fraction(-2)), EnteringCandidate(x3, Fraction(-1, 3)))
+
+
+def test_leaving_candidates_keep_row_order_and_ignore_non_positive_pivots():
+    x = var("x")
+    s1, s2, s3, s4 = (var(f"s{i}", VarKind.SLACK) for i in range(1, 5))
+    tableau = Tableau.__new__(Tableau)
+    tableau._basic_vars = frozenset((s1, s2, s3, s4))
+    tableau._variables = (x, s1, s2, s3, s4)
+    tableau._reduced_cost_coefficients = (Fraction(-1), Fraction(0), Fraction(0), Fraction(0), Fraction(0))
+    tableau._rows = (
+        TableauRow((Fraction(2), Fraction(1), Fraction(0), Fraction(0), Fraction(0)), Fraction(8), s1),
+        TableauRow((Fraction(1), Fraction(0), Fraction(1), Fraction(0), Fraction(0)), Fraction(3), s2),
+        TableauRow((Fraction(0), Fraction(0), Fraction(0), Fraction(1), Fraction(0)), Fraction(0), s3),
+        TableauRow((Fraction(-2), Fraction(0), Fraction(0), Fraction(0), Fraction(1)), Fraction(1), s4),
+    )
+
+    assert tableau.leaving_candidates(x) == (LeavingCandidate(s1, Fraction(2), Fraction(8)), LeavingCandidate(s2, Fraction(1), Fraction(3)))
+    assert tableau.leaving_variable(x, minimum_ratio_rule) in tableau.leaving_candidates(x)
 
 
 def test_entering_variable_delegates_the_choice_to_the_given_rule():

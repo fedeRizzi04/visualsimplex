@@ -97,27 +97,29 @@ class BalinskiGomoryInitializer(InitializationStrategy):
         current = tableau
         while current.get_value_for_basic_var(violated_row_basic_var) < 0:
             violated_row = next(row for row in current.rows if row.basic_var == violated_row_basic_var)
-            entering = self._choose_entering_variable(current, violated_row.coefficients)
-            if entering is None:
+            entering_candidates = self._entering_candidates(current, violated_row.coefficients)
+            if not entering_candidates:
                 return None
+            entering = self.entering_rule(entering_candidates)
             entering_index = current.get_var_index(entering)
-            candidates = tuple(LeavingCandidate(row.basic_var, row.coefficients[entering_index], row.rhs)
-                                 for row in current.rows if row.basic_var != violated_row_basic_var and row.rhs >= 0 and row.coefficients[entering_index] > 0)
-            if candidates:
-                leaving = self.leaving_rule(candidates)
-            else: # no leaving candidates, then the last possibility is to pivot on the same row
+            leaving_candidates = self._leaving_candidates(current, entering_index, violated_row_basic_var)
+            if leaving_candidates:
+                leaving = self.leaving_rule(leaving_candidates)
+            else: # no leaving candidates, then the last possibility is to pivot on the same row
                 leaving = LeavingCandidate(violated_row_basic_var, violated_row.coefficients[entering_index], violated_row.rhs)
-            after = current.pivot(entering, leaving.leaving_var)
-            steps.append(InitializationPivotStep(current, entering, leaving.leaving_var, leaving.pivot, after, violated_row_basic_var))
+                leaving_candidates = (leaving,)
+            after = current.pivot(entering, leaving.var)
+            steps.append(InitializationPivotStep(current, entering_candidates, entering, leaving_candidates, leaving.var, leaving.pivot, after, violated_row_basic_var))
             current = after
-            if leaving.leaving_var == violated_row_basic_var: # pivot on the same row
+            if leaving.var == violated_row_basic_var: # pivot on the same row
                 break
         return current
 
-    def _choose_entering_variable(self, tableau : Tableau, coefficients : tuple[Fraction]) -> Variable | None:
-        '''given a row of coefficients, this method returns the entering variable selected from the entering rule of this instance'''
-        candidates = tuple(EnteringCandidate(var, coefficient) for var, coefficient in zip(tableau.variables, coefficients) if coefficient < 0)
-        if not candidates:
-            return None
-        entering = self.entering_rule(candidates)
-        return entering
+    def _entering_candidates(self, tableau : Tableau, coefficients : tuple[Fraction]) -> tuple[EnteringCandidate, ...]:
+        '''Return the candidates the entering rule chooses among: the variables whose coefficient in the violated row is negative.'''
+        return tuple(EnteringCandidate(var, coefficient) for var, coefficient in zip(tableau.variables, coefficients) if coefficient < 0)
+
+    def _leaving_candidates(self, tableau : Tableau, entering_index : int, violated_row_basic_var : Variable) -> tuple[LeavingCandidate, ...]:
+        '''Return the candidates the leaving rule chooses among: the feasible rows other than the violated one admitting a positive pivot.'''
+        return tuple(LeavingCandidate(row.basic_var, row.coefficients[entering_index], row.rhs)
+                     for row in tableau.rows if row.basic_var != violated_row_basic_var and row.rhs >= 0 and row.coefficients[entering_index] > 0)

@@ -31,7 +31,7 @@ def dantzig_rule(candidates : Iterable[EnteringCandidate]) -> Variable:
 
 @dataclass(frozen=True)
 class LeavingCandidate:
-    leaving_var : Variable
+    var : Variable
     pivot : Fraction
     rhs : Fraction
 

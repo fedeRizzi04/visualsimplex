@@ -52,6 +52,42 @@ def test_simplex_algorithm_uses_the_configured_entering_and_leaving_rules():
     assert tuple(report.steps) == tuple(report.optimization_steps)
 
 
+def test_optimization_steps_record_the_candidates_each_choice_was_made_among():
+    x1, x2 = var('x1'), var('x2')
+    lp_problem = problem(
+        (Term(x1, Fraction(-3)), Term(x2, Fraction(-2))),
+        (
+            Constraint(Expression((Term(x1, Fraction(1)), Term(x2, Fraction(1)))), Fraction(4), ConstraintSense.LE),
+            Constraint(Expression((Term(x1, Fraction(1)), Term(x2, Fraction(3)))), Fraction(6), ConstraintSense.LE),
+        ),
+    )
+
+    report = SimplexAlgorithm().solve_inequality_form(lp_problem)
+    step = report.optimization_steps[0]
+
+    assert tuple(candidate.var for candidate in step.entering_candidates) == (x1, x2)
+    assert tuple(candidate.reduced_cost for candidate in step.entering_candidates) == (Fraction(-3), Fraction(-2))
+    assert step.entering == x1
+    assert tuple(candidate.var.symbol for candidate in step.leaving_candidates) == ('sl0', 'sl1')
+    assert tuple(candidate.ratio for candidate in step.leaving_candidates) == (Fraction(4), Fraction(6))
+    assert step.leaving in tuple(candidate.var for candidate in step.leaving_candidates)
+
+
+def test_perform_pivot_records_no_candidates_when_no_rule_selected_the_pivot():
+    x = var('x')
+    lp_problem = problem(
+        (Term(x, Fraction(1)),),
+        (Constraint(Expression((Term(x, Fraction(1)),)), Fraction(4), ConstraintSense.LE),),
+    )
+    tableau = Tableau(lp_problem.from_inequality_form_to_canonical_form())
+    leaving = next(iter(tableau.basic_variables))
+
+    step = SimplexAlgorithm().perform_pivot(tableau, x, leaving)
+
+    assert step.entering_candidates == ()
+    assert step.leaving_candidates == ()
+
+
 def test_simplex_report_contains_initialization_steps_before_optimization_steps():
     x = var('x')
     lp_problem = problem(

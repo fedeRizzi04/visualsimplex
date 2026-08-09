@@ -4,6 +4,7 @@ from fractions import Fraction
 import pytest
 
 from visualsimplex.initialization import BalinskiGomoryInitializer, InitializationStatus
+from visualsimplex.rules import EnteringCandidate, LeavingCandidate
 from visualsimplex.tableau import Tableau, TableauRow
 from visualsimplex.value_objects import VarKind, Variable
 
@@ -123,6 +124,48 @@ def test_balinski_gomory_stops_optimizing_a_constraint_as_soon_as_its_rhs_is_non
 
     assert result.get_value_for_basic_var(s2) == Fraction(0)
     assert len(steps) == 1
+
+
+def test_initialization_steps_record_the_candidates_taken_from_the_violated_row():
+    x1, x2 = var("x1"), var("x2")
+    s1, s2, s3 = var("s1", VarKind.SLACK), var("s2", VarKind.SLACK), var("s3", VarKind.SLACK)
+    tableau = make_tableau(
+        (x1, x2, s1, s2, s3),
+        (s1, s2, s3),
+        (2, 3, 0, 0, 0),
+        (
+            TableauRow((Fraction(1), Fraction(0), Fraction(1), Fraction(0), Fraction(0)), Fraction(2), s1),
+            TableauRow((Fraction(0), Fraction(1), Fraction(0), Fraction(1), Fraction(0)), Fraction(10), s2),
+            TableauRow((Fraction(-1), Fraction(-1), Fraction(0), Fraction(0), Fraction(1)), Fraction(-4), s3),
+        ),
+    )
+
+    step = tuple(tableau.initialize(BalinskiGomoryInitializer()))[0]
+
+    assert step.entering_candidates == (EnteringCandidate(x1, Fraction(-1)), EnteringCandidate(x2, Fraction(-1)))
+    assert step.entering == x1
+    assert step.leaving_candidates == (LeavingCandidate(s1, Fraction(1), Fraction(2)),)
+    assert step.leaving == s1
+
+
+def test_initialization_records_the_pivot_on_the_violated_row_itself_as_its_only_candidate():
+    x = var("x")
+    s1, s2 = var("s1", VarKind.SLACK), var("s2", VarKind.SLACK)
+    tableau = make_tableau(
+        (x, s1, s2),
+        (s1, s2),
+        (2, 0, 0),
+        (
+            TableauRow((Fraction(0), Fraction(1), Fraction(0)), Fraction(6), s1),
+            TableauRow((Fraction(-1), Fraction(0), Fraction(1)), Fraction(-4), s2),
+        ),
+    )
+
+    step = tuple(tableau.initialize(BalinskiGomoryInitializer()))[0]
+
+    assert step.entering_candidates == (EnteringCandidate(x, Fraction(-1)),)
+    assert step.leaving_candidates == (LeavingCandidate(s2, Fraction(-1), Fraction(-4)),)
+    assert step.leaving == s2
 
 
 def test_balinski_gomory_detects_an_infeasible_problem():
