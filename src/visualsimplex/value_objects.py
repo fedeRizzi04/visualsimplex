@@ -7,24 +7,28 @@ from itertools import chain
 
 # variables, terms and expressions
 
-class ComparableEnum(Enum):
+class DeclarationOrderEnum(Enum):
+
+    def __init__(self, *_):
+        self._order = len(type(self).__members__) # members before self in Enum declaration
+
     def __lt__(self, other):
         if not isinstance(other, type(self)):
             raise TypeError(f'{type(self)} instances cannot be compared (<) with {type(other)} instances')
-        return self.value < other.value
-
-class VarKind(ComparableEnum):
-    ORIGINAL = (0, 'original')
-    SLACK = (1, 'slack')
-    SURPLUS = (2, 'surplus')
-
-class VarDomain(ComparableEnum):
-    NON_NEGATIVE = (0, 'non negative')
-    FREE = (1, 'free')
+        return self._order < other._order
 
     def __str__(self):
-        return ">= 0" if self is VarDomain.NON_NEGATIVE else "free"
+        return self.value
 
+
+class VarKind(DeclarationOrderEnum):
+    ORIGINAL = 'original'
+    SLACK = 'slack'
+    SURPLUS = 'surplus'
+
+class VarDomain(DeclarationOrderEnum):
+    NON_NEGATIVE = '>= 0'
+    FREE = 'free'
 
 @dataclass(frozen=True, order=True)
 class Variable:
